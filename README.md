@@ -18,7 +18,7 @@ Cukup pilih/ketik **SKU** atau **nama barang** (dropdown + rekomendasi nama terd
 | -------- | ------------------------------------------------------ |
 | Frontend | Vue 3 + Vite, Vue Router, Pinia, Axios                 |
 | Backend  | Laravel 11, Laravel Sanctum (auth)                     |
-| Database | MySQL / MariaDB (SQLite untuk development cepat)       |
+| Database | PostgreSQL                                             |
 
 ## Struktur Repo (rencana)
 
