@@ -11,7 +11,7 @@
     "lint:oxlint": "oxlint . --fix",
     "lint:eslint": "eslint . --fix --cache",
     "format": "prettier --write --experimental-cli src/",
-    "check:logic": "node --test src/lib/search.check.js src/lib/roles.check.js"
+    "check:logic": "node --test src/lib/*.check.js src/api/mock.check.js"
   },
   "dependencies": {
     "pinia": "^4.0.3",
