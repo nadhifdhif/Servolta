@@ -1,13 +1,21 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { api, ApiError } from '../api'
 import FaqCard from '../components/FaqCard.vue'
 import FaqForm from '../components/FaqForm.vue'
+import Icon from '../components/Icon.vue'
 import ProductCombobox from '../components/ProductCombobox.vue'
+import { useRecent } from '../composables/useRecent.js'
+import { useToast } from '../composables/useToast.js'
 import { normalize } from '../lib/search.js'
 import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
+const route = useRoute()
+const router = useRouter()
+const toast = useToast()
+const { add: addRecent } = useRecent(() => auth.user?.id)
 
 const products = ref([])
 const loadingProducts = ref(true)
@@ -24,6 +32,12 @@ const formMode = ref(null) // null | 'new' | objek faq yang sedang diubah
 const saving = ref(false)
 const formErrors = ref({})
 const formMessage = ref('')
+
+const TABS = [
+  { key: 'all', label: 'Semua', short: 'Semua' },
+  { key: 'cs', label: 'Customer Service', short: 'CS' },
+  { key: 'ts', label: 'Technical Support', short: 'TS' },
+]
 
 const canWrite = computed(() => auth.permissions.write_faq === true)
 
@@ -45,6 +59,11 @@ const visibleFaqs = computed(() => {
 onMounted(async () => {
   try {
     products.value = await api.listProducts()
+    // Dari "Terakhir Anda lihat" di beranda: /faq?sku=SVR-1000 langsung membuka produknya.
+    const sku = route.query.sku
+    if (typeof sku === 'string') {
+      selected.value = products.value.find((p) => p.sku === sku) ?? null
+    }
   } catch (e) {
     pageError.value = e.message
   } finally {
@@ -58,7 +77,10 @@ watch(selected, async (product) => {
   closeForm()
   faqs.value = []
   pageError.value = ''
+  loadingFaqs.value = false
+  router.replace({ query: product ? { sku: product.sku } : {} })
   if (!product) return
+  addRecent(product)
 
   loadingFaqs.value = true
   try {
@@ -106,6 +128,7 @@ async function saveFaq(payload) {
       faqs.value = faqs.value.map((f) => (f.id === updated.id ? updated : f))
     }
     closeForm()
+    toast.show('FAQ disimpan')
   } catch (e) {
     formErrors.value = e instanceof ApiError ? e.errors : {}
     formMessage.value = e.message
@@ -119,34 +142,53 @@ async function removeFaq(faq) {
   try {
     await api.deleteFaq(faq.id)
     faqs.value = faqs.value.filter((f) => f.id !== faq.id)
+    toast.show('FAQ dihapus')
   } catch (e) {
-    pageError.value = e.message
+    toast.show(e.message, 'error', 3500)
   }
 }
 </script>
 
 <template>
   <section class="search-page">
-    <p v-if="pageError" class="alert alert-error" role="alert">{{ pageError }}</p>
+    <header class="page-hero">
+      <h1>Cari FAQ produk</h1>
+      <p>Ketik SKU atau nama barang, pilih produknya, lalu salin jawaban untuk customer.</p>
 
-    <p v-if="loadingProducts" class="muted">Memuat daftar produk...</p>
-    <ProductCombobox v-else v-model="selected" :products="products" />
+      <p v-if="loadingProducts" class="hero-status">Memuat daftar produk...</p>
+      <ProductCombobox v-else v-model="selected" :products="products" />
+      <p v-if="!loadingProducts && !pageError" class="hero-status">
+        <Icon name="box" :size="14" /> {{ products.length }} produk terdaftar
+      </p>
+    </header>
+
+    <p v-if="pageError" class="alert alert-error" role="alert">
+      <Icon name="info" :size="16" /> {{ pageError }}
+    </p>
 
     <div v-if="!selected && !loadingProducts" class="empty-state">
-      <p>Pilih atau ketik SKU / nama barang untuk menampilkan FAQ-nya.</p>
-      <p class="muted">{{ products.length }} produk tersedia.</p>
+      <span class="empty-icon"><Icon name="search" :size="26" /></span>
+      <p><strong>Belum ada produk dipilih</strong></p>
+      <p class="muted">Mulai ketik SKU atau nama barang di kotak pencarian di atas.</p>
     </div>
 
     <template v-if="selected">
-      <header class="product-head">
-        <div>
-          <span class="sku">{{ selected.sku }}</span>
+      <div class="card product-head">
+        <span class="product-icon"><Icon name="box" :size="24" /></span>
+        <div class="product-info">
+          <span class="sku-chip">{{ selected.sku }}</span>
           <h2>{{ selected.name }}</h2>
+          <p class="muted small">{{ counts.all }} FAQ tersedia</p>
         </div>
-        <button v-if="canWrite && formMode === null" type="button" class="btn btn-primary" @click="openNew">
-          + Tambah FAQ
+        <button
+          v-if="canWrite && formMode === null"
+          type="button"
+          class="btn btn-primary"
+          @click="openNew"
+        >
+          <Icon name="plus" :size="16" /> Tambah FAQ
         </button>
-      </header>
+      </div>
 
       <FaqForm
         v-if="formMode !== null"
@@ -160,32 +202,52 @@ async function removeFaq(faq) {
       />
 
       <div class="toolbar">
-        <div class="tabs" role="tablist" aria-label="Kategori FAQ">
+        <div class="segmented" role="tablist" aria-label="Kategori FAQ">
           <button
-            v-for="tab in [
-              { key: 'all', label: 'Semua' },
-              { key: 'cs', label: 'Customer Service' },
-              { key: 'ts', label: 'Technical Support' },
-            ]"
+            v-for="tab in TABS"
             :key="tab.key"
             type="button"
             role="tab"
             :aria-selected="category === tab.key"
-            :class="['tab', { active: category === tab.key }]"
+            :class="['seg', { active: category === tab.key }]"
             @click="category = tab.key"
           >
-            {{ tab.label }} <span class="count">{{ counts[tab.key] }}</span>
+            <span class="seg-full">{{ tab.label }}</span>
+            <span class="seg-short">{{ tab.short }}</span>
+            <span class="count">{{ counts[tab.key] }}</span>
           </button>
         </div>
-        <input v-model="faqQuery" class="input" type="search" placeholder="Cari di dalam FAQ..." />
+        <div class="search-field">
+          <Icon name="search" :size="16" />
+          <input
+            v-model="faqQuery"
+            class="input"
+            type="search"
+            placeholder="Cari di dalam FAQ..."
+            aria-label="Cari di dalam FAQ"
+          />
+        </div>
       </div>
 
-      <p v-if="loadingFaqs" class="muted">Memuat FAQ...</p>
-      <p v-else-if="!visibleFaqs.length" class="empty-state">
-        {{ faqs.length ? 'Tidak ada FAQ yang cocok dengan filter.' : 'Belum ada FAQ untuk produk ini.' }}
-      </p>
+      <div v-if="loadingFaqs" class="faq-list" aria-busy="true">
+        <div v-for="n in 3" :key="n" class="card skeleton"></div>
+      </div>
 
-      <div class="faq-list">
+      <div v-else-if="!visibleFaqs.length" class="empty-state">
+        <span class="empty-icon"><Icon name="message" :size="26" /></span>
+        <p>
+          <strong>{{
+            faqs.length
+              ? 'Tidak ada FAQ yang cocok dengan filter'
+              : 'Belum ada FAQ untuk produk ini'
+          }}</strong>
+        </p>
+        <p v-if="!faqs.length && canWrite" class="muted">
+          Klik "Tambah FAQ" untuk membuat yang pertama.
+        </p>
+      </div>
+
+      <div v-else class="faq-list">
         <FaqCard
           v-for="faq in visibleFaqs"
           :key="faq.id"

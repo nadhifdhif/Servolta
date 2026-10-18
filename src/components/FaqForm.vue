@@ -1,5 +1,6 @@
 <script setup>
 import { reactive } from 'vue'
+import Icon from './Icon.vue'
 
 const props = defineProps({
   initial: { type: Object, default: null },
@@ -22,9 +23,16 @@ function submit() {
 
 <template>
   <form class="card faq-form" @submit.prevent="submit">
-    <h3>{{ initial ? 'Ubah FAQ' : 'Tambah FAQ' }}</h3>
+    <header class="form-head">
+      <h3>{{ initial ? 'Ubah FAQ' : 'Tambah FAQ' }}</h3>
+      <button type="button" class="icon-btn" aria-label="Tutup form" @click="emit('cancel')">
+        <Icon name="x" :size="18" />
+      </button>
+    </header>
 
-    <p v-if="message" class="alert alert-error" role="alert">{{ message }}</p>
+    <p v-if="message" class="alert alert-error" role="alert">
+      <Icon name="info" :size="16" /> {{ message }}
+    </p>
 
     <div class="field">
       <label class="label" for="faq-category">Kategori</label>
@@ -51,7 +59,9 @@ function submit() {
       <button type="submit" class="btn btn-primary" :disabled="saving">
         {{ saving ? 'Menyimpan...' : 'Simpan' }}
       </button>
-      <button type="button" class="btn btn-ghost" :disabled="saving" @click="emit('cancel')">Batal</button>
+      <button type="button" class="btn btn-ghost" :disabled="saving" @click="emit('cancel')">
+        Batal
+      </button>
     </div>
   </form>
 </template>

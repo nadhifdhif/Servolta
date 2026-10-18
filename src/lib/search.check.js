@@ -21,7 +21,10 @@ test('SKU persis menempati urutan pertama', () => {
 })
 
 test('awalan SKU menampilkan beberapa kandidat', () => {
-  assert.deepEqual(skus(searchProducts(MOCK_PRODUCTS, 'ups')).slice(0, 2).sort(), ['UPS-1200', 'UPS-650'])
+  assert.deepEqual(skus(searchProducts(MOCK_PRODUCTS, 'ups')).slice(0, 2).sort(), [
+    'UPS-1200',
+    'UPS-650',
+  ])
 })
 
 test('nama sebagian kata', () => {
