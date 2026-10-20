@@ -141,8 +141,8 @@ async function remove(doc) {
   <section class="search-page">
     <ProductHero
       v-model="selected"
-      title="Datasheet produk"
-      subtitle="Pilih produknya, lalu salin spesifikasinya atau unduh PDF resminya."
+      title="Datasheet"
+      subtitle="Spesifikasi dan dokumen PDF per produk."
       :products="products"
       :loading="loadingProducts"
       :error="productError"
@@ -153,14 +153,12 @@ async function remove(doc) {
     </p>
 
     <div v-if="!selected && !loadingProducts" class="empty-state">
-      <span class="empty-icon"><Icon name="file" :size="26" /></span>
       <p><strong>Belum ada produk dipilih</strong></p>
       <p class="muted">Mulai ketik SKU atau nama barang di kotak pencarian di atas.</p>
     </div>
 
     <template v-if="selected">
       <div class="card product-head">
-        <span class="product-icon"><Icon name="box" :size="24" /></span>
         <div class="product-info">
           <span class="sku-chip">{{ selected.sku }}</span>
           <h2>{{ selected.name }}</h2>
@@ -238,7 +236,6 @@ async function remove(doc) {
             <h3>{{ documents.length }} dokumen</h3>
           </div>
           <div v-if="!documents.length" class="empty-state">
-            <span class="empty-icon"><Icon name="file" :size="26" /></span>
             <p><strong>Belum ada PDF untuk produk ini</strong></p>
             <p v-if="canUpload" class="muted">Klik "Unggah PDF" untuk menambahkan.</p>
           </div>

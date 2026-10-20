@@ -1,5 +1,4 @@
 <script setup>
-import Icon from './Icon.vue'
 import ProductCombobox from './ProductCombobox.vue'
 
 defineProps({
@@ -14,13 +13,13 @@ const selected = defineModel({ type: Object, default: null })
 
 <template>
   <header class="page-hero">
-    <h1>{{ title }}</h1>
-    <p>{{ subtitle }}</p>
+    <div>
+      <h1>{{ title }}</h1>
+      <p class="muted">{{ subtitle }}</p>
+    </div>
 
     <p v-if="loading" class="hero-status">Memuat daftar produk...</p>
     <ProductCombobox v-else v-model="selected" :products="products" />
-    <p v-if="!loading && !error" class="hero-status">
-      <Icon name="box" :size="14" /> {{ products.length }} produk terdaftar
-    </p>
+    <p v-if="!loading && !error" class="hero-status">{{ products.length }} produk terdaftar</p>
   </header>
 </template>
