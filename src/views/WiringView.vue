@@ -152,8 +152,8 @@ async function remove() {
   <section class="search-page">
     <ProductHero
       v-model="selected"
-      title="Gambar wiring produk"
-      subtitle="Pilih produknya, lalu salin atau unduh gambar pemasangan kabel untuk dikirim ke customer."
+      title="Wiring"
+      subtitle="Gambar pemasangan kabel per produk. Salin atau unduh untuk dikirim ke customer."
       :products="products"
       :loading="loadingProducts"
       :error="productError"
@@ -164,14 +164,12 @@ async function remove() {
     </p>
 
     <div v-if="!selected && !loadingProducts" class="empty-state">
-      <span class="empty-icon"><Icon name="plug" :size="26" /></span>
       <p><strong>Belum ada produk dipilih</strong></p>
       <p class="muted">Mulai ketik SKU atau nama barang di kotak pencarian di atas.</p>
     </div>
 
     <template v-if="selected">
       <div class="card product-head">
-        <span class="product-icon"><Icon name="box" :size="24" /></span>
         <div class="product-info">
           <span class="sku-chip">{{ selected.sku }}</span>
           <h2>{{ selected.name }}</h2>
@@ -200,7 +198,6 @@ async function remove() {
       <div v-if="loading" class="card skeleton" aria-busy="true"></div>
 
       <div v-else-if="!docs.length" class="empty-state">
-        <span class="empty-icon"><Icon name="image" :size="26" /></span>
         <p><strong>Belum ada gambar wiring untuk produk ini</strong></p>
         <p v-if="canUpload" class="muted">Klik "Unggah" untuk menambahkan yang pertama.</p>
       </div>

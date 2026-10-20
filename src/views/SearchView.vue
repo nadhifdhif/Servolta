@@ -5,7 +5,7 @@ import { api, ApiError } from '../api'
 import FaqCard from '../components/FaqCard.vue'
 import FaqForm from '../components/FaqForm.vue'
 import Icon from '../components/Icon.vue'
-import ProductCombobox from '../components/ProductCombobox.vue'
+import ProductHero from '../components/ProductHero.vue'
 import { useRecent } from '../composables/useRecent.js'
 import { useToast } from '../composables/useToast.js'
 import { normalize } from '../lib/search.js'
@@ -151,30 +151,26 @@ async function removeFaq(faq) {
 
 <template>
   <section class="search-page">
-    <header class="page-hero">
-      <h1>Cari FAQ produk</h1>
-      <p>Ketik SKU atau nama barang, pilih produknya, lalu salin jawaban untuk customer.</p>
-
-      <p v-if="loadingProducts" class="hero-status">Memuat daftar produk...</p>
-      <ProductCombobox v-else v-model="selected" :products="products" />
-      <p v-if="!loadingProducts && !pageError" class="hero-status">
-        <Icon name="box" :size="14" /> {{ products.length }} produk terdaftar
-      </p>
-    </header>
+    <ProductHero
+      v-model="selected"
+      title="FAQ"
+      subtitle="Cari produk lewat SKU atau nama barang, lalu salin jawabannya."
+      :products="products"
+      :loading="loadingProducts"
+      :error="pageError"
+    />
 
     <p v-if="pageError" class="alert alert-error" role="alert">
       <Icon name="info" :size="16" /> {{ pageError }}
     </p>
 
     <div v-if="!selected && !loadingProducts" class="empty-state">
-      <span class="empty-icon"><Icon name="search" :size="26" /></span>
       <p><strong>Belum ada produk dipilih</strong></p>
       <p class="muted">Mulai ketik SKU atau nama barang di kotak pencarian di atas.</p>
     </div>
 
     <template v-if="selected">
       <div class="card product-head">
-        <span class="product-icon"><Icon name="box" :size="24" /></span>
         <div class="product-info">
           <span class="sku-chip">{{ selected.sku }}</span>
           <h2>{{ selected.name }}</h2>
@@ -234,7 +230,6 @@ async function removeFaq(faq) {
       </div>
 
       <div v-else-if="!visibleFaqs.length" class="empty-state">
-        <span class="empty-icon"><Icon name="message" :size="26" /></span>
         <p>
           <strong>{{
             faqs.length

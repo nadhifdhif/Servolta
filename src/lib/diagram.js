@@ -4,7 +4,7 @@ export const WIRES = {
   N: { color: '#3b82f6', label: 'N: netral (biru)' },
   PE: { color: '#4caf50', stripe: '#e6d12a', label: 'PE: arde (hijau-kuning)' },
   POS: { color: '#e5484d', label: '+12 V (merah)' },
-  NEG: { color: '#16203a', label: '−12 V (hitam)' },
+  NEG: { color: '#1f2328', label: '−12 V (hitam)' },
   DATA: { color: '#2a52e6', label: 'Data (UTP / BNC)' },
 }
 
@@ -65,9 +65,9 @@ export function diagramSvg(diagram, title = 'wiring') {
   let body = `<rect width="${width}" height="${height}" fill="#ffffff"/>`
   for (const n of nodes) {
     const cx = n.x + n.w / 2
-    body += `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="12" fill="#ffffff" stroke="#c9d2e5" stroke-width="1.5"/>`
-    body += `<text x="${cx}" y="${n.y + 34}" text-anchor="middle" fill="#16203a" ${font} font-size="14" font-weight="700">${esc(n.title)}</text>`
-    body += `<text x="${cx}" y="${n.y + 54}" text-anchor="middle" fill="#5b6684" ${font} font-size="11.5" font-weight="500">${esc(n.sub)}</text>`
+    body += `<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="12" fill="#ffffff" stroke="#bfbfb7" stroke-width="1.5"/>`
+    body += `<text x="${cx}" y="${n.y + 34}" text-anchor="middle" fill="#1f2328" ${font} font-size="14" font-weight="700">${esc(n.title)}</text>`
+    body += `<text x="${cx}" y="${n.y + 54}" text-anchor="middle" fill="#5f6770" ${font} font-size="11.5" font-weight="500">${esc(n.sub)}</text>`
   }
   for (const link of links) {
     for (const w of link.wires) {
@@ -79,7 +79,7 @@ export function diagramSvg(diagram, title = 'wiring') {
         body += `<circle cx="${x}" cy="${w.y}" r="3.5" fill="#ffffff" stroke="${w.color}" stroke-width="2"/>`
       }
     }
-    body += `<text x="${link.lx}" y="${link.ly}" text-anchor="middle" fill="#5b6684" ${font} font-size="11" font-weight="600">${esc(link.label)}</text>`
+    body += `<text x="${link.lx}" y="${link.ly}" text-anchor="middle" fill="#5f6770" ${font} font-size="11" font-weight="600">${esc(link.label)}</text>`
   }
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="Gambar wiring ${esc(title)}">${body}</svg>`
 }

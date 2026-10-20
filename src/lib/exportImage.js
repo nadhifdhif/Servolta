@@ -81,39 +81,37 @@ export function drawSpecCard(product, specs, source) {
   ctx.fillStyle = '#ffffff'
   ctx.fillRect(0, 0, width, height)
 
-  const grad = ctx.createLinearGradient(0, 0, width, head)
-  grad.addColorStop(0, '#2342d1')
-  grad.addColorStop(0.58, '#3a78fb')
-  grad.addColorStop(1, '#12b4c8')
-  ctx.fillStyle = grad
+  ctx.fillStyle = '#f5f5f2'
   ctx.fillRect(0, 0, width, head)
-  ctx.fillStyle = 'rgba(255,255,255,.85)'
+  ctx.fillStyle = '#d8d8d2'
+  ctx.fillRect(0, head - 1, width, 1)
+  ctx.fillStyle = '#1f4e8c'
   ctx.font = FONT(700, 14)
   ctx.fillText(product.sku, pad, 40)
-  ctx.fillStyle = '#ffffff'
-  ctx.font = FONT(750, 26)
+  ctx.fillStyle = '#1f2328'
+  ctx.font = FONT(700, 26)
   ctx.fillText(product.name, pad, 78)
-  ctx.fillStyle = 'rgba(255,255,255,.85)'
-  ctx.font = FONT(500, 14)
+  ctx.fillStyle = '#5f6770'
+  ctx.font = FONT(400, 14)
   ctx.fillText('Spesifikasi ringkas', pad, 102)
 
   let y = head
   card.rows.forEach((row, i) => {
     if (i % 2) {
-      ctx.fillStyle = '#f5f7fd'
+      ctx.fillStyle = '#faf9f7'
       ctx.fillRect(0, y, width, row.height)
     }
-    ctx.fillStyle = '#5b6684'
+    ctx.fillStyle = '#5f6770'
     ctx.font = FONT(500, 16)
     ctx.fillText(row.label, pad, y + rowPad + 16)
-    ctx.fillStyle = '#16203a'
+    ctx.fillStyle = '#1f2328'
     ctx.font = FONT(650, 16)
     row.lines.forEach((line, j) =>
       ctx.fillText(line, pad + labelWidth, y + rowPad + 16 + j * lineHeight),
     )
     y += row.height
   })
-  ctx.fillStyle = '#5b6684'
+  ctx.fillStyle = '#5f6770'
   ctx.font = FONT(500, 13)
   ctx.fillText(source, pad, y + 34)
   return canvas

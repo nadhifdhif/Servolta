@@ -4,7 +4,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { ApiError, isMock } from '../api'
 import { MOCK_ACCOUNTS } from '../api/mockAccounts.js'
 import Icon from '../components/Icon.vue'
-import UserAvatar from '../components/UserAvatar.vue'
 import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
@@ -42,88 +41,73 @@ const quickLogin = (account) => doLogin(account.email, account.password)
 
 <template>
   <section class="login-page">
-    <div class="login-hero">
-      <span class="brand-mark brand-mark-lg"><Icon name="zap" :size="26" /></span>
-      <h1>Balas chat customer lebih cepat.</h1>
-      <p>Cari FAQ berdasarkan SKU atau nama barang, salin jawabannya, lalu kirim.</p>
-      <ul class="hero-points">
-        <li><Icon name="search" :size="16" /> Salah ketik pun produknya tetap ketemu</li>
-        <li><Icon name="copy" :size="16" /> Salin jawaban dalam satu klik</li>
-        <li><Icon name="shield" :size="16" /> Akses menyesuaikan peran di tim</li>
-      </ul>
-    </div>
+    <form class="card login-card" @submit.prevent="submit">
+      <h1>Servolta</h1>
+      <p class="muted">Masuk dengan akun yang diberikan admin.</p>
 
-    <div class="login-panel">
-      <form class="card login-card" @submit.prevent="submit">
-        <h2>Masuk</h2>
-        <p class="muted">Gunakan akun yang diberikan admin.</p>
+      <p v-if="error" class="alert alert-error" role="alert">
+        <Icon name="info" :size="16" /> {{ error }}
+      </p>
 
-        <p v-if="error" class="alert alert-error" role="alert">
-          <Icon name="info" :size="16" /> {{ error }}
-        </p>
+      <div class="field">
+        <label class="label" for="email">Email</label>
+        <input
+          id="email"
+          v-model="email"
+          class="input"
+          type="email"
+          autocomplete="username"
+          placeholder="nama@perusahaan.com"
+          required
+        />
+      </div>
 
-        <div class="field">
-          <label class="label" for="email">Email</label>
+      <div class="field">
+        <label class="label" for="password">Kata sandi</label>
+        <div class="input-group">
           <input
-            id="email"
-            v-model="email"
+            id="password"
+            v-model="password"
             class="input"
-            type="email"
-            autocomplete="username"
-            placeholder="nama@perusahaan.com"
+            :type="showPassword ? 'text' : 'password'"
+            autocomplete="current-password"
             required
           />
+          <button
+            type="button"
+            class="input-addon"
+            :aria-label="showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'"
+            @click="showPassword = !showPassword"
+          >
+            <Icon :name="showPassword ? 'eye-off' : 'eye'" :size="18" />
+          </button>
         </div>
+      </div>
 
-        <div class="field">
-          <label class="label" for="password">Kata sandi</label>
-          <div class="input-group">
-            <input
-              id="password"
-              v-model="password"
-              class="input"
-              :type="showPassword ? 'text' : 'password'"
-              autocomplete="current-password"
-              required
-            />
-            <button
-              type="button"
-              class="input-addon"
-              :aria-label="showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'"
-              @click="showPassword = !showPassword"
-            >
-              <Icon :name="showPassword ? 'eye-off' : 'eye'" :size="18" />
-            </button>
-          </div>
-        </div>
+      <button type="submit" class="btn btn-primary btn-lg btn-block" :disabled="loading">
+        {{ loading ? 'Memproses...' : 'Masuk' }}
+      </button>
+    </form>
 
-        <button type="submit" class="btn btn-primary btn-lg btn-block" :disabled="loading">
-          {{ loading ? 'Memproses...' : 'Masuk' }}
-        </button>
-      </form>
-
-      <aside v-if="isMock" class="card mock-panel">
-        <header class="mock-head">
-          <h2>Akun contoh</h2>
-          <span class="badge badge-warn">Mode mock</span>
-        </header>
-        <p class="muted">
-          Kata sandi semua akun: <code>password</code>. Klik salah satu untuk masuk dengan role
-          tersebut.
-        </p>
-        <ul class="account-grid">
-          <li v-for="account in MOCK_ACCOUNTS" :key="account.id">
-            <button type="button" class="account" :disabled="loading" @click="quickLogin(account)">
-              <UserAvatar :name="account.name" :role="account.role" />
-              <span class="account-meta">
-                <strong>{{ account.role_label }}</strong>
-                <small>{{ account.email }}</small>
-                <small v-if="account.note" class="account-note">{{ account.note }}</small>
-              </span>
-            </button>
-          </li>
-        </ul>
-      </aside>
-    </div>
+    <aside v-if="isMock" class="card mock-panel">
+      <header class="mock-head">
+        <h2>Akun contoh</h2>
+        <span class="badge badge-warn">Mode mock</span>
+      </header>
+      <p class="muted">
+        Kata sandi semua akun: <code>password</code>. Klik salah satu untuk masuk.
+      </p>
+      <ul class="account-grid">
+        <li v-for="account in MOCK_ACCOUNTS" :key="account.id">
+          <button type="button" class="account" :disabled="loading" @click="quickLogin(account)">
+            <span class="account-meta">
+              <strong>{{ account.role_label }}</strong>
+              <small>{{ account.name }} · {{ account.email }}</small>
+              <small v-if="account.note" class="account-note">{{ account.note }}</small>
+            </span>
+          </button>
+        </li>
+      </ul>
+    </aside>
   </section>
 </template>
