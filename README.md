@@ -2,8 +2,6 @@
 
 Aplikasi internal untuk membantu tim **Customer Service** dan **Technical Support** menemukan jawaban FAQ dengan cepat saat membalas chat customer.
 
-Cukup pilih/ketik **SKU** atau **nama barang** (dropdown + rekomendasi nama terdekat), lalu daftar FAQ untuk produk tersebut langsung tampil dan siap disalin.
-
 ## Fitur
 
 - Login / logout (token-based)
