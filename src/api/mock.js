@@ -2,12 +2,17 @@ import { ApiError } from './errors.js'
 import { MOCK_ACCOUNTS, toPublicUser } from './mockAccounts.js'
 import { MOCK_FAQS, MOCK_PRODUCTS } from './mockData.js'
 import { MOCK_DOCUMENTS, MOCK_SPECS, MOCK_WIRING } from './mockFiles.js'
+import { MOCK_SELLING } from './mockSelling.js'
 import { extOf, todayIso, validateUpload } from '../lib/files.js'
+import { cleanSpecs, normalizeSku, validateProduct } from '../lib/products.js'
 import { makeSimplePdf } from '../lib/pdf.js'
+import { validateSelling } from '../lib/selling.js'
 import { specsToText } from '../lib/specs.js'
 import { tokenStorage } from './token.js'
 
 const FAQ_KEY = 'servolta_mock_faqs'
+const PRODUCT_KEY = 'servolta_mock_products'
+const SELLING_KEY = 'servolta_mock_selling'
 let DELAY_MS = 250
 const delay = (factor = 1) => new Promise((resolve) => setTimeout(resolve, DELAY_MS * factor))
 
@@ -34,7 +39,34 @@ function saveFaqs(list) {
   }
 }
 
+function loadJson(key) {
+  try {
+    const raw = localStorage.getItem(key)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
+function saveJson(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value))
+  } catch {
+    /* abaikan */
+  }
+}
+
 let faqs = loadFaqs()
+
+// Produk tambahan (dari menu Tambah SKU) disimpan di browser; produk bawaan tetap dari mockData.js.
+let extraProducts = loadJson(PRODUCT_KEY) ?? [] // [{ id, sku, name, specs }]
+const allProducts = () => [
+  ...MOCK_PRODUCTS,
+  ...extraProducts.map(({ id, sku, name }) => ({ id, sku, name })),
+]
+const specsOf = (id) => extraProducts.find((p) => p.id === id)?.specs ?? MOCK_SPECS[id] ?? []
+
+let selling = loadJson(SELLING_KEY) ?? structuredClone(MOCK_SELLING)
 
 // Wiring & datasheet hanya disimpan di memori (hilang saat halaman dimuat ulang):
 // file unggahan tidak bisa disimpan di localStorage. Backend asli menyimpannya di storage privat.
@@ -94,7 +126,7 @@ export async function me() {
 export async function listProducts() {
   await delay()
   currentUser()
-  return structuredClone(MOCK_PRODUCTS)
+  return allProducts()
 }
 
 export async function getOverview() {
@@ -102,7 +134,7 @@ export async function getOverview() {
   currentUser()
   return {
     faq: faqs.length,
-    products: MOCK_PRODUCTS.length,
+    products: allProducts().length,
     wiring: wiring.length,
     datasheet: documents.length,
   }
@@ -178,7 +210,7 @@ export async function getDatasheet(productId) {
   await delay()
   currentUser()
   return {
-    specs: structuredClone(MOCK_SPECS[productId] ?? []),
+    specs: structuredClone(specsOf(productId)),
     documents: structuredClone(documents.filter((d) => d.product_id === productId)),
   }
 }
@@ -189,12 +221,12 @@ export async function downloadDatasheet(id) {
   const stored = uploads.get(`d${id}`)
   if (stored) return stored
   const doc = documents.find((d) => d.id === id)
-  const product = MOCK_PRODUCTS.find((p) => p.id === doc?.product_id)
+  const product = allProducts().find((p) => p.id === doc?.product_id)
   if (!doc || !product) throw new ApiError('Dokumen tidak ditemukan.', 404)
   const lines = [
     `Rev. ${doc.rev} - ${doc.lang}`,
     '',
-    ...specsToText(product, MOCK_SPECS[product.id] ?? []).split('\n'),
+    ...specsToText(product, specsOf(product.id)).split('\n'),
     '',
     '(Dokumen contoh untuk mode mock, bukan datasheet resmi.)',
   ]
@@ -278,9 +310,107 @@ export async function deleteFaq(id) {
   saveFaqs(faqs)
 }
 
+export async function createProduct(payload) {
+  await delay()
+  requireProductsWrite()
+  const errors = validateProduct(
+    payload,
+    allProducts().map((p) => p.sku),
+  )
+  if (Object.keys(errors).length) throw new ApiError('Data tidak valid.', 422, errors)
+
+  const product = {
+    id: Math.max(0, ...allProducts().map((p) => p.id)) + 1,
+    sku: normalizeSku(payload.sku),
+    name: payload.name.trim(),
+    specs: cleanSpecs(payload.specs).specs,
+  }
+  extraProducts = [...extraProducts, product]
+  saveJson(PRODUCT_KEY, extraProducts)
+  return { id: product.id, sku: product.sku, name: product.name }
+}
+
+function requireSellingWrite() {
+  if (!currentUser().permissions.write_selling) {
+    throw new ApiError('Role Anda tidak boleh mengubah upselling dan cross selling.', 403)
+  }
+}
+
+function sellingView(entry) {
+  const target = allProducts().find((p) => p.id === entry.target_id)
+  return target ? { ...entry, target: { id: target.id, sku: target.sku, name: target.name } } : null
+}
+
+export async function listSelling(productId) {
+  await delay()
+  currentUser()
+  return selling
+    .filter((e) => e.product_id === productId)
+    .map(sellingView)
+    .filter(Boolean)
+}
+
+export async function createSelling(productId, payload) {
+  await delay()
+  requireSellingWrite()
+  if (!allProducts().some((p) => p.id === productId))
+    throw new ApiError('Produk tidak ditemukan.', 404)
+  const errors = validateSelling(payload, {
+    productId,
+    products: allProducts(),
+    existing: selling.filter((e) => e.product_id === productId),
+  })
+  if (Object.keys(errors).length) throw new ApiError('Data tidak valid.', 422, errors)
+
+  const created = {
+    id: Math.max(0, ...selling.map((e) => e.id)) + 1,
+    product_id: productId,
+    type: payload.type,
+    target_id: Number(payload.target_id),
+    pitch: payload.pitch.trim(),
+    updated_at: new Date().toISOString(),
+  }
+  selling = [...selling, created]
+  saveJson(SELLING_KEY, selling)
+  return sellingView(created)
+}
+
+export async function updateSelling(id, payload) {
+  await delay()
+  requireSellingWrite()
+  const current = selling.find((e) => e.id === id)
+  if (!current) throw new ApiError('Data tidak ditemukan.', 404)
+  const errors = validateSelling(payload, {
+    productId: current.product_id,
+    products: allProducts(),
+    existing: selling.filter((e) => e.product_id === current.product_id && e.id !== id),
+  })
+  if (Object.keys(errors).length) throw new ApiError('Data tidak valid.', 422, errors)
+
+  const updated = {
+    ...current,
+    type: payload.type,
+    target_id: Number(payload.target_id),
+    pitch: payload.pitch.trim(),
+    updated_at: new Date().toISOString(),
+  }
+  selling = selling.map((e) => (e.id === id ? updated : e))
+  saveJson(SELLING_KEY, selling)
+  return sellingView(updated)
+}
+
+export async function deleteSelling(id) {
+  await delay()
+  requireSellingWrite()
+  selling = selling.filter((e) => e.id !== id)
+  saveJson(SELLING_KEY, selling)
+}
+
 export function resetMock() {
   try {
     localStorage.removeItem(FAQ_KEY)
+    localStorage.removeItem(PRODUCT_KEY)
+    localStorage.removeItem(SELLING_KEY)
   } catch {
     /* abaikan */
   }
@@ -288,4 +418,6 @@ export function resetMock() {
   wiring = structuredClone(MOCK_WIRING)
   documents = structuredClone(MOCK_DOCUMENTS)
   uploads.clear()
+  extraProducts = []
+  selling = structuredClone(MOCK_SELLING)
 }

@@ -26,6 +26,8 @@ export function permissionsFor(role) {
   return {
     manage_users: manageableRoles(role).length > 0,
     write_faq: role !== 'intern',
+    // Upselling & cross selling: untuk sekarang sama dengan FAQ (semua kecuali intern).
+    write_selling: role !== 'intern',
     write_products: ['superadmin', 'admin', 'spv'].includes(role),
   }
 }

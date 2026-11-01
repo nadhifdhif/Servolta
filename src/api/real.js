@@ -13,6 +13,12 @@
 //   GET    /datasheet-documents/{id}/file -> biner PDF
 //   POST   /products/{id}/datasheet-documents -> multipart: title, rev, file (PDF, maks. 20 MB)
 //   DELETE /datasheet-documents/{id}  -> 204
+//   POST   /products                  -> { data: { id, sku, name } }      (spv ke atas)
+//   PUT    /products/{id}/specs       -> body { specs: [{ label, value }] }
+//   GET    /products/{id}/selling     -> { data: [{ id, product_id, type: 'upsell'|'cross', target: { id, sku, name }, pitch, updated_at }] }
+//   POST   /products/{id}/selling     -> body { type, target_id, pitch }  (semua role kecuali intern)
+//   PUT    /selling/{id}              -> body { type, target_id, pitch }
+//   DELETE /selling/{id}              -> 204
 
 import { ApiError } from './errors.js'
 import { tokenStorage } from './token.js'
@@ -77,8 +83,7 @@ function uploadForm({ title, rev, file }) {
 export const login = (email, password) => request('POST', '/login', { email, password })
 export const logout = () => request('POST', '/logout')
 export const me = async () => (await request('GET', '/me')).data
-// Belum ada endpoint ringkasan di backend: beranda menyembunyikan angkanya bila null.
-export const getOverview = async () => null
+export const getOverview = async () => (await request('GET', '/overview')).data
 export const listProducts = async () => (await request('GET', '/products')).data
 export const listFaqs = async (productId) =>
   (await request('GET', `/products/${productId}/faqs`)).data
@@ -98,3 +103,16 @@ export const downloadDatasheet = (id) => requestBlob(`/datasheet-documents/${id}
 export const createDatasheetDoc = async (productId, payload) =>
   (await request('POST', `/products/${productId}/datasheet-documents`, uploadForm(payload))).data
 export const deleteDatasheetDoc = (id) => request('DELETE', `/datasheet-documents/${id}`)
+export async function createProduct({ sku, name, specs = [] }) {
+  const product = (await request('POST', '/products', { sku, name })).data
+  const rows = specs.filter((r) => r.label?.trim() && r.value?.trim())
+  if (rows.length) await request('PUT', `/products/${product.id}/specs`, { specs: rows })
+  return product
+}
+export const listSelling = async (productId) =>
+  (await request('GET', `/products/${productId}/selling`)).data
+export const createSelling = async (productId, payload) =>
+  (await request('POST', `/products/${productId}/selling`, payload)).data
+export const updateSelling = async (id, payload) =>
+  (await request('PUT', `/selling/${id}`, payload)).data
+export const deleteSelling = (id) => request('DELETE', `/selling/${id}`)

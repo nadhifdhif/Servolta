@@ -35,3 +35,9 @@ test('buildUser membentuk objek seperti UserResource backend', () => {
   assert.equal(user.role_label, 'Customer Service')
   assert.ok('permissions' in user)
 })
+
+test('hak tulis upselling dan cross selling: semua kecuali intern', () => {
+  for (const role of ROLES) {
+    assert.equal(permissionsFor(role).write_selling, role !== 'intern', role)
+  }
+})
