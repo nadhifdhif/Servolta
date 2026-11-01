@@ -178,3 +178,102 @@ test('ringkasan beranda menghitung wiring dan datasheet', async () => {
   assert.equal(o.wiring, 11)
   assert.equal(o.datasheet, 13)
 })
+
+test('tambah SKU: hanya spv ke atas, validasi, SKU unik, muncul di daftar dan datasheet', async () => {
+  mock.resetMock()
+  await loginAs('cs@servolta.test')
+  await rejects(mock.createProduct({ sku: 'X-1', name: 'X' }), 403)
+
+  await loginAs('spv@servolta.test')
+  await rejects(mock.createProduct({ sku: 'svr-1000', name: 'Duplikat' }), 422)
+  await rejects(mock.createProduct({ sku: 'bad sku', name: 'x' }), 422)
+  await rejects(mock.createProduct({ sku: 'N-1', name: '' }), 422)
+  await rejects(
+    mock.createProduct({ sku: 'N-1', name: 'x', specs: [{ label: 'a', value: '' }] }),
+    422,
+  )
+
+  const before = (await mock.listProducts()).length
+  const created = await mock.createProduct({
+    sku: ' dht-22 ',
+    name: ' Sensor DHT22 ',
+    specs: [
+      { label: 'Tegangan', value: '3,3 - 5 V' },
+      { label: '', value: '' },
+    ],
+  })
+  assert.equal(created.sku, 'DHT-22')
+  assert.equal(created.name, 'Sensor DHT22')
+  assert.equal((await mock.listProducts()).length, before + 1)
+  assert.deepEqual((await mock.getDatasheet(created.id)).specs, [['Tegangan', '3,3 - 5 V']])
+  assert.equal((await mock.getOverview()).products, before + 1)
+  await rejects(mock.createProduct({ sku: 'DHT-22', name: 'Lagi' }), 422)
+  mock.resetMock()
+  assert.equal((await mock.listProducts()).length, before)
+})
+
+test('upselling & cross selling: semua role bisa lihat, intern tidak bisa tulis', async () => {
+  mock.resetMock()
+  for (const role of ROLES) {
+    await loginAs(`${role}@servolta.test`)
+    const entries = await mock.listSelling(1)
+    assert.ok(entries.length >= 2)
+    assert.ok(entries.every((e) => e.target.sku && e.pitch && ['upsell', 'cross'].includes(e.type)))
+  }
+  await loginAs('intern@servolta.test')
+  await rejects(mock.createSelling(1, { type: 'upsell', target_id: 4, pitch: 'x' }), 403)
+  await rejects(mock.updateSelling(1, { type: 'upsell', target_id: 2, pitch: 'x' }), 403)
+  await rejects(mock.deleteSelling(1), 403)
+})
+
+test('upselling & cross selling: CS sampai role teratas bisa menambah, mengubah, menghapus', async () => {
+  for (const role of ['cs', 'ts', 'mo', 'sales', 'konten', 'spv', 'admin', 'superadmin']) {
+    mock.resetMock()
+    await loginAs(`${role}@servolta.test`)
+    const created = await mock.createSelling(2, {
+      type: 'cross',
+      target_id: '8',
+      pitch: ' Pasang adaptor. ',
+    })
+    assert.equal(created.target.sku, 'PWR-12V5A', role)
+    assert.equal(created.pitch, 'Pasang adaptor.')
+    const updated = await mock.updateSelling(created.id, {
+      type: 'upsell',
+      target_id: 4,
+      pitch: 'Baru',
+    })
+    assert.equal(updated.type, 'upsell')
+    assert.equal(updated.target.sku, 'UPS-1200')
+    await mock.deleteSelling(created.id)
+    assert.ok(!(await mock.listSelling(2)).some((e) => e.id === created.id))
+  }
+})
+
+test('upselling & cross selling: validasi dan duplikat', async () => {
+  mock.resetMock()
+  await loginAs('cs@servolta.test')
+  await rejects(mock.createSelling(1, { type: 'upsell', target_id: 1, pitch: 'x' }), 422) // diri sendiri
+  await rejects(mock.createSelling(1, { type: 'upsell', target_id: 999, pitch: 'x' }), 422)
+  await rejects(mock.createSelling(1, { type: 'upsell', target_id: 4, pitch: ' ' }), 422)
+  await rejects(mock.createSelling(1, { type: 'upsell', target_id: 2, pitch: 'x' }), 422) // sudah ada
+  await rejects(mock.createSelling(999, { type: 'upsell', target_id: 2, pitch: 'x' }), 404)
+  await rejects(mock.updateSelling(999, { type: 'upsell', target_id: 2, pitch: 'x' }), 404)
+  // mengubah entri tanpa mengganti tujuan tidak dianggap duplikat dirinya sendiri
+  const [first] = await mock.listSelling(1)
+  await mock.updateSelling(first.id, {
+    type: first.type,
+    target_id: first.target_id,
+    pitch: 'Sama saja',
+  })
+})
+
+test('produk baru punya daftar selling kosong dan bisa dipilih sebagai tujuan', async () => {
+  mock.resetMock()
+  await loginAs('spv@servolta.test')
+  const p = await mock.createProduct({ sku: 'NEW-1', name: 'Baru' })
+  assert.deepEqual(await mock.listSelling(p.id), [])
+  const e = await mock.createSelling(1, { type: 'cross', target_id: p.id, pitch: 'Cocok.' })
+  assert.equal(e.target.sku, 'NEW-1')
+  mock.resetMock()
+  assert.ok(!(await mock.listSelling(1)).some((x) => x.target.sku === 'NEW-1'))
+})

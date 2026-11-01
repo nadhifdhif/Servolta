@@ -5,9 +5,11 @@ import { api, ApiError } from '../api'
 import FaqCard from '../components/FaqCard.vue'
 import FaqForm from '../components/FaqForm.vue'
 import Icon from '../components/Icon.vue'
+import SellingSection from '../components/SellingSection.vue'
 import ProductHero from '../components/ProductHero.vue'
 import { useRecent } from '../composables/useRecent.js'
 import { useToast } from '../composables/useToast.js'
+import { countByType } from '../lib/selling.js'
 import { normalize } from '../lib/search.js'
 import { useAuthStore } from '../stores/auth'
 
@@ -23,6 +25,9 @@ const pageError = ref('')
 
 const selected = ref(null)
 const faqs = ref([])
+const selling = ref([])
+const sellingError = ref('')
+const section = ref('faq') // 'faq' | 'upsell' | 'cross'
 const loadingFaqs = ref(false)
 
 const category = ref('all')
@@ -33,6 +38,12 @@ const saving = ref(false)
 const formErrors = ref({})
 const formMessage = ref('')
 
+const SECTIONS = [
+  { key: 'faq', label: 'FAQ' },
+  { key: 'upsell', label: 'Upselling' },
+  { key: 'cross', label: 'Cross selling' },
+]
+
 const TABS = [
   { key: 'all', label: 'Semua', short: 'Semua' },
   { key: 'cs', label: 'Customer Service', short: 'CS' },
@@ -40,6 +51,8 @@ const TABS = [
 ]
 
 const canWrite = computed(() => auth.permissions.write_faq === true)
+const canSell = computed(() => auth.permissions.write_selling === true)
+const sellingCounts = computed(() => countByType(selling.value))
 
 const counts = computed(() => ({
   all: faqs.value.length,
@@ -76,11 +89,24 @@ watch(selected, async (product) => {
   faqQuery.value = ''
   closeForm()
   faqs.value = []
+  selling.value = []
+  sellingError.value = ''
+  section.value = 'faq'
   pageError.value = ''
   loadingFaqs.value = false
   router.replace({ query: product ? { sku: product.sku } : {} })
   if (!product) return
   addRecent(product)
+
+  // Saran upselling/cross selling dimuat bersamaan; kegagalannya tidak mengganggu daftar FAQ.
+  api
+    .listSelling(product.id)
+    .then((result) => {
+      if (selected.value?.id === product.id) selling.value = result
+    })
+    .catch((e) => {
+      if (selected.value?.id === product.id) sellingError.value = e.message
+    })
 
   loadingFaqs.value = true
   try {
@@ -93,6 +119,11 @@ watch(selected, async (product) => {
     if (selected.value?.id === product.id) loadingFaqs.value = false
   }
 })
+
+function openTarget(target) {
+  const next = products.value.find((p) => p.id === target.id)
+  if (next) selected.value = next
+}
 
 function openNew() {
   resetFormState()
@@ -170,14 +201,14 @@ async function removeFaq(faq) {
     </div>
 
     <template v-if="selected">
-      <div class="card product-head">
+      <div class="product-head">
         <div class="product-info">
           <span class="sku-chip">{{ selected.sku }}</span>
           <h2>{{ selected.name }}</h2>
           <p class="muted small">{{ counts.all }} FAQ tersedia</p>
         </div>
         <button
-          v-if="canWrite && formMode === null"
+          v-if="section === 'faq' && canWrite && formMode === null"
           type="button"
           class="btn btn-primary"
           @click="openNew"
@@ -186,72 +217,107 @@ async function removeFaq(faq) {
         </button>
       </div>
 
-      <FaqForm
-        v-if="formMode !== null"
-        :key="formMode === 'new' ? 'new' : formMode.id"
-        :initial="formMode === 'new' ? null : formMode"
-        :saving="saving"
-        :errors="formErrors"
-        :message="formMessage"
-        @save="saveFaq"
-        @cancel="closeForm"
-      />
+      <div class="tabs" role="tablist" aria-label="Informasi produk">
+        <button
+          v-for="tab in SECTIONS"
+          :key="tab.key"
+          type="button"
+          role="tab"
+          :aria-selected="section === tab.key"
+          :class="['tab', { active: section === tab.key }]"
+          @click="section = tab.key"
+        >
+          {{ tab.label }}
+          <span class="count">{{ tab.key === 'faq' ? counts.all : sellingCounts[tab.key] }}</span>
+        </button>
+      </div>
 
-      <div class="toolbar">
-        <div class="segmented" role="tablist" aria-label="Kategori FAQ">
-          <button
-            v-for="tab in TABS"
-            :key="tab.key"
-            type="button"
-            role="tab"
-            :aria-selected="category === tab.key"
-            :class="['seg', { active: category === tab.key }]"
-            @click="category = tab.key"
-          >
-            <span class="seg-full">{{ tab.label }}</span>
-            <span class="seg-short">{{ tab.short }}</span>
-            <span class="count">{{ counts[tab.key] }}</span>
-          </button>
+      <p v-if="sellingError && section !== 'faq'" class="alert alert-error" role="alert">
+        <Icon name="info" :size="16" /> {{ sellingError }}
+      </p>
+
+      <template v-if="section === 'faq'">
+        <FaqForm
+          v-if="formMode !== null"
+          :key="formMode === 'new' ? 'new' : formMode.id"
+          :initial="formMode === 'new' ? null : formMode"
+          :saving="saving"
+          :errors="formErrors"
+          :message="formMessage"
+          @save="saveFaq"
+          @cancel="closeForm"
+        />
+
+        <div class="toolbar">
+          <div class="segmented" role="tablist" aria-label="Kategori FAQ">
+            <button
+              v-for="tab in TABS"
+              :key="tab.key"
+              type="button"
+              role="tab"
+              :aria-selected="category === tab.key"
+              :class="['seg', { active: category === tab.key }]"
+              @click="category = tab.key"
+            >
+              <span class="seg-full">{{ tab.label }}</span>
+              <span class="seg-short">{{ tab.short }}</span>
+              <span class="count">{{ counts[tab.key] }}</span>
+            </button>
+          </div>
+          <div class="search-field">
+            <Icon name="search" :size="16" />
+            <input
+              v-model="faqQuery"
+              class="input"
+              type="search"
+              placeholder="Cari di dalam FAQ..."
+              aria-label="Cari di dalam FAQ"
+            />
+          </div>
         </div>
-        <div class="search-field">
-          <Icon name="search" :size="16" />
-          <input
-            v-model="faqQuery"
-            class="input"
-            type="search"
-            placeholder="Cari di dalam FAQ..."
-            aria-label="Cari di dalam FAQ"
+
+        <div v-if="loadingFaqs" class="faq-list" aria-busy="true">
+          <div v-for="n in 3" :key="n" class="card skeleton"></div>
+        </div>
+
+        <div v-else-if="!visibleFaqs.length" class="empty-state">
+          <p>
+            <strong>{{
+              faqs.length
+                ? 'Tidak ada FAQ yang cocok dengan filter'
+                : 'Belum ada FAQ untuk produk ini'
+            }}</strong>
+          </p>
+          <p v-if="!faqs.length && canWrite" class="muted">
+            Klik "Tambah FAQ" untuk membuat yang pertama.
+          </p>
+        </div>
+
+        <div v-else class="faq-list">
+          <FaqCard
+            v-for="faq in visibleFaqs"
+            :key="faq.id"
+            :faq="faq"
+            :can-write="canWrite"
+            @edit="openEdit"
+            @remove="removeFaq"
           />
         </div>
-      </div>
+      </template>
 
-      <div v-if="loadingFaqs" class="faq-list" aria-busy="true">
-        <div v-for="n in 3" :key="n" class="card skeleton"></div>
-      </div>
-
-      <div v-else-if="!visibleFaqs.length" class="empty-state">
-        <p>
-          <strong>{{
-            faqs.length
-              ? 'Tidak ada FAQ yang cocok dengan filter'
-              : 'Belum ada FAQ untuk produk ini'
-          }}</strong>
-        </p>
-        <p v-if="!faqs.length && canWrite" class="muted">
-          Klik "Tambah FAQ" untuk membuat yang pertama.
-        </p>
-      </div>
-
-      <div v-else class="faq-list">
-        <FaqCard
-          v-for="faq in visibleFaqs"
-          :key="faq.id"
-          :faq="faq"
-          :can-write="canWrite"
-          @edit="openEdit"
-          @remove="removeFaq"
-        />
-      </div>
+      <SellingSection
+        v-else
+        :key="section"
+        :type="section"
+        :product-id="selected.id"
+        :products="products"
+        :entries="selling"
+        :can-write="canSell"
+        @created="selling = [...selling, $event]"
+        @updated="selling = selling.map((e) => (e.id === $event.id ? $event : e))"
+        @removed="selling = selling.filter((e) => e.id !== $event)"
+        @open="openTarget"
+      />
     </template>
   </section>
 </template>

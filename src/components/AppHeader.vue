@@ -8,10 +8,17 @@ const router = useRouter()
 const route = useRoute()
 
 const MENU = [
-  { to: '/faq', label: 'FAQ' },
-  { to: '/wiring', label: 'Wiring' },
-  { to: '/datasheet', label: 'Datasheet' },
+  { to: '/faq', label: 'FAQ', carry: true },
+  { to: '/wiring', label: 'Wiring', carry: true },
+  { to: '/datasheet', label: 'Datasheet', carry: true },
+  { to: '/kode', label: 'Kode', carry: false },
 ]
+
+// Berpindah antar menu produk tetap di SKU yang sedang dipilih.
+function menuTarget(item) {
+  const sku = route.query.sku
+  return { path: item.to, query: item.carry && typeof sku === 'string' ? { sku } : {} }
+}
 
 async function onLogout() {
   await auth.logout()
@@ -33,10 +40,7 @@ function resetMock() {
         <RouterLink
           v-for="item in MENU"
           :key="item.to"
-          :to="{
-            path: item.to,
-            query: typeof route.query.sku === 'string' ? { sku: route.query.sku } : {},
-          }"
+          :to="menuTarget(item)"
           class="menu-item"
           active-class="active"
         >

@@ -169,7 +169,7 @@ async function remove() {
     </div>
 
     <template v-if="selected">
-      <div class="card product-head">
+      <div class="product-head">
         <div class="product-info">
           <span class="sku-chip">{{ selected.sku }}</span>
           <h2>{{ selected.name }}</h2>
