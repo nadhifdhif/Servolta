@@ -15,7 +15,7 @@ const SAMPLE_NAMES = {
   admin: 'Dewi Lestari',
   spv: 'Bagas Saputra',
   cs: 'Citra Maharani',
-  ts: 'Taufik Hidayat',
+  ts: 'Naufal Nadhif',
   mo: 'Maya Anggraini',
   sales: 'Salsa Wulandari',
   konten: 'Kevin Aditya',
