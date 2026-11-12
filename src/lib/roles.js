@@ -1,34 +1,34 @@
-// Cermin dari app/Enums/UserRole.php di backend. Di mode asli, FE memakai
+// Cermin dari app/Enums/UserRole.php di backend (delapan role, tanpa superadmin). Di mode asli, FE memakai
 // `user.permissions` dari /api/me; file ini dipakai oleh mode mock.
 
 export const ROLE_LABELS = {
-  superadmin: 'Super Admin',
   admin: 'Admin',
   spv: 'Supervisor',
-  cs: 'Customer Service',
   ts: 'Technical Support',
   mo: 'Marketing Officer',
-  sales: 'Sales',
-  konten: 'Konten',
+  cs: 'Customer Service',
+  sales: 'Sales and Data',
+  konten: 'Content and Branding',
   intern: 'Intern',
 }
 
 export const ROLES = Object.keys(ROLE_LABELS)
 
+// Admin mengelola semua role; Supervisor hanya staf di bawahnya.
 export function manageableRoles(role) {
-  if (role === 'superadmin') return [...ROLES]
-  if (role === 'admin') return ROLES.filter((r) => r !== 'superadmin')
-  if (role === 'spv') return ['cs', 'ts', 'mo', 'sales', 'konten', 'intern']
+  if (role === 'admin') return [...ROLES]
+  if (role === 'spv') return ['ts', 'mo', 'cs', 'sales', 'konten', 'intern']
   return []
 }
 
+// Semua role selain Intern boleh menulis. Intern hanya melihat.
 export function permissionsFor(role) {
+  const canWrite = role !== 'intern'
   return {
     manage_users: manageableRoles(role).length > 0,
-    write_faq: role !== 'intern',
-    // Upselling & cross selling: untuk sekarang sama dengan FAQ (semua kecuali intern).
-    write_selling: role !== 'intern',
-    write_products: ['superadmin', 'admin', 'spv'].includes(role),
+    write_faq: canWrite,
+    write_selling: canWrite, // upselling & cross selling
+    write_products: canWrite, // SKU, spesifikasi, wiring, datasheet
   }
 }
 

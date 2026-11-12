@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api, isMock } from '../api'
 import { useAuthStore } from '../stores/auth'
@@ -12,7 +13,10 @@ const MENU = [
   { to: '/wiring', label: 'Wiring', carry: true },
   { to: '/datasheet', label: 'Datasheet', carry: true },
   { to: '/kode', label: 'Kode', carry: false },
+  { to: '/pengguna', label: 'Pengguna', carry: false, perm: 'manage_users' },
 ]
+
+const menu = computed(() => MENU.filter((item) => !item.perm || auth.permissions[item.perm]))
 
 // Berpindah antar menu produk tetap di SKU yang sedang dipilih.
 function menuTarget(item) {
@@ -34,11 +38,14 @@ function resetMock() {
 <template>
   <header class="app-header">
     <div class="container header-inner">
-      <RouterLink :to="{ name: 'home' }" class="brand">Servolta</RouterLink>
+      <RouterLink :to="{ name: 'home' }" class="brand" aria-label="Servolta, ke beranda">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        Servolta
+      </RouterLink>
 
       <nav v-if="auth.user" class="menu" aria-label="Menu utama">
         <RouterLink
-          v-for="item in MENU"
+          v-for="item in menu"
           :key="item.to"
           :to="menuTarget(item)"
           class="menu-item"

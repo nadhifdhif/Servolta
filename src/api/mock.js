@@ -1,10 +1,12 @@
 import { ApiError } from './errors.js'
-import { MOCK_ACCOUNTS, toPublicUser } from './mockAccounts.js'
+import { MOCK_ACCOUNTS, buildAccount, toPublicUser } from './mockAccounts.js'
 import { MOCK_FAQS, MOCK_PRODUCTS } from './mockData.js'
 import { MOCK_DOCUMENTS, MOCK_SPECS, MOCK_WIRING } from './mockFiles.js'
 import { MOCK_SELLING } from './mockSelling.js'
 import { extOf, todayIso, validateUpload } from '../lib/files.js'
 import { cleanSpecs, normalizeSku, validateProduct } from '../lib/products.js'
+import { ROLE_LABELS, manageableRoles } from '../lib/roles.js'
+import { normalizeEmail, validateUser } from '../lib/users.js'
 import { makeSimplePdf } from '../lib/pdf.js'
 import { validateSelling } from '../lib/selling.js'
 import { specsToText } from '../lib/specs.js'
@@ -75,10 +77,14 @@ let documents = structuredClone(MOCK_DOCUMENTS)
 const uploads = new Map() // 'w1' / 'd1' -> File
 let nextFileId = 1000
 
+// Akun hanya di memori (hilang saat halaman dimuat ulang), agar kata sandi contoh tidak
+// tersimpan di browser. Perubahan dari menu Pengguna berlaku selama halaman tidak di-refresh.
+let accounts = structuredClone(MOCK_ACCOUNTS)
+
 function currentUser() {
   const token = tokenStorage.get() ?? ''
   const found = token.startsWith('mock.')
-    ? MOCK_ACCOUNTS.find((a) => String(a.id) === token.slice(5))
+    ? accounts.find((a) => String(a.id) === token.slice(5))
     : null
   if (!found || !found.is_active) throw new ApiError('Unauthenticated.', 401)
   return toPublicUser(found)
@@ -100,7 +106,7 @@ function validateFaq(payload) {
 
 export async function login(email, password) {
   await delay()
-  const found = MOCK_ACCOUNTS.find((a) => a.email === String(email).trim().toLowerCase())
+  const found = accounts.find((a) => a.email === normalizeEmail(email))
   if (!found || found.password !== password) {
     throw new ApiError('Email atau kata sandi salah.', 422, {
       email: ['Email atau kata sandi salah.'],
@@ -406,6 +412,93 @@ export async function deleteSelling(id) {
   saveJson(SELLING_KEY, selling)
 }
 
+function requireManageUsers() {
+  const user = currentUser()
+  if (!user.permissions.manage_users) {
+    throw new ApiError('Role Anda tidak boleh mengelola pengguna.', 403)
+  }
+  return user
+}
+
+// Akun sendiri tidak diubah dari menu ini, dan hanya role yang boleh dikelola yang bisa disentuh.
+function manageableTarget(actor, id) {
+  const target = accounts.find((a) => a.id === id)
+  if (!target) throw new ApiError('Pengguna tidak ditemukan.', 404)
+  if (target.id === actor.id) {
+    throw new ApiError('Akun Anda sendiri tidak bisa diubah dari menu pengguna.', 403)
+  }
+  if (!manageableRoles(actor.role).includes(target.role)) {
+    throw new ApiError('Role Anda tidak boleh mengelola akun ini.', 403)
+  }
+  return target
+}
+
+export async function listUsers() {
+  await delay()
+  const actor = requireManageUsers()
+  const roles = manageableRoles(actor.role)
+  return accounts
+    .filter((a) => roles.includes(a.role))
+    .sort((a, b) => a.name.localeCompare(b.name) || a.id - b.id)
+    .map(toPublicUser)
+}
+
+export async function createUser(payload) {
+  await delay()
+  const actor = requireManageUsers()
+  const errors = validateUser(payload, {
+    actorRole: actor.role,
+    otherEmails: accounts.map((a) => a.email),
+  })
+  if (Object.keys(errors).length) throw new ApiError('Data tidak valid.', 422, errors)
+
+  const created = buildAccount({
+    id: Math.max(0, ...accounts.map((a) => a.id)) + 1,
+    role: payload.role,
+    name: payload.name.trim(),
+    email: normalizeEmail(payload.email),
+    password: payload.password,
+    is_active: payload.is_active !== false,
+  })
+  accounts = [...accounts, created]
+  return toPublicUser(created)
+}
+
+export async function updateUser(id, payload) {
+  await delay()
+  const actor = requireManageUsers()
+  const target = manageableTarget(actor, id)
+  const errors = validateUser(payload, {
+    actorRole: actor.role,
+    otherEmails: accounts.filter((a) => a.id !== id).map((a) => a.email),
+    isEdit: true,
+  })
+  if (Object.keys(errors).length) throw new ApiError('Data tidak valid.', 422, errors)
+
+  const updated = buildAccount({
+    id,
+    role: payload.role,
+    name: payload.name.trim(),
+    email: normalizeEmail(payload.email),
+    password: payload.password ? payload.password : target.password,
+    is_active: payload.is_active ?? target.is_active,
+  })
+  accounts = accounts.map((a) => (a.id === id ? updated : a))
+  return toPublicUser(updated)
+}
+
+export async function deleteUser(id) {
+  await delay()
+  const actor = requireManageUsers()
+  manageableTarget(actor, id)
+  accounts = accounts.filter((a) => a.id !== id)
+}
+
+// Hanya ada di mode contoh: dipakai halaman login untuk tombol "masuk sebagai ...".
+export function listDemoAccounts() {
+  return structuredClone(MOCK_ACCOUNTS)
+}
+
 export function resetMock() {
   try {
     localStorage.removeItem(FAQ_KEY)
@@ -420,4 +513,5 @@ export function resetMock() {
   uploads.clear()
   extraProducts = []
   selling = structuredClone(MOCK_SELLING)
+  accounts = structuredClone(MOCK_ACCOUNTS)
 }

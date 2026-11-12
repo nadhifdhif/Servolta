@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { hints } from '../config.js'
 import { searchProducts } from '../lib/search.js'
 import Icon from './Icon.vue'
 
@@ -98,7 +99,7 @@ function onKeydown(event) {
         aria-controls="product-listbox"
         :aria-expanded="open"
         :aria-activedescendant="open && options.length ? `product-opt-${active}` : undefined"
-        placeholder="Contoh: SVR-1000 atau stabilizer servo"
+        :placeholder="hints.product"
         @focus="open = true"
         @input="open = true"
         @blur="onBlur"

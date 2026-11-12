@@ -1,8 +1,18 @@
-import * as mockApi from './mock.js'
-import * as realApi from './real.js'
+import { isMock } from '../config.js'
 
-// Mode mock aktif kecuali VITE_USE_MOCK=false (lihat .env.development).
-export const isMock = import.meta.env.VITE_USE_MOCK !== 'false'
-export const api = isMock ? mockApi : realApi
-
+export { isMock }
 export { ApiError } from './errors.js'
+
+// `api` diisi oleh loadApi() sebelum aplikasi dipasang (lihat main.js). Modul mock diimpor secara
+// dinamis di cabang yang hanya hidup saat pengembangan, jadi tidak ikut ke hasil `npm run build`.
+export let api = null
+
+export async function loadApi() {
+  if (api) return api
+  if (import.meta.env.DEV && import.meta.env.VITE_USE_MOCK !== 'false') {
+    api = await import('./mock.js')
+  } else {
+    api = await import('./real.js')
+  }
+  return api
+}
