@@ -5,9 +5,18 @@ Kesalahan validasi: `422 { "message": "...", "errors": { "kolom": ["pesan"] } }`
 
 | Method | Endpoint | Keterangan | Akses |
 | --- | --- | --- | --- |
-| POST | `/api/login` | Masuk, mengembalikan token | Publik (maks. 5x/menit) |
+| POST | `/api/login` | Masuk dengan `code` + `password`, mengembalikan token | Publik (5x/menit per kode+IP) |
 | POST | `/api/logout` | Keluar | Login |
 | GET | `/api/me` | Pengguna saat ini + `permissions` | Login |
+| PUT | `/api/me` | Ubah nama sendiri | Login |
+| PUT | `/api/me/password` | Ganti kata sandi sendiri (`current_password`, `password`, `password_confirmation`) | Login |
+| POST | `/api/logout-all` | Keluar dari semua perangkat | Login |
+| GET | `/api/users` | Daftar pengguna yang boleh dikelola peminta (admin: semua; supervisor: staf di bawahnya) | `manage_users` |
+| POST | `/api/users` | Tambah pengguna: `name`, `login_code` (kosong = dibuat acak), `employee_id` (opsional), `role`, `password` (min. 10), `is_active` | `manage_users` |
+| PUT | `/api/users/{id}` | Ubah pengguna; `password` boleh kosong (tidak diganti). Sesi lama dicabut bila sandi/role berubah atau akun dinonaktifkan | `manage_users` |
+| POST | `/api/users/{id}/unlock` | Buka kunci akun yang terkunci karena salah sandi berulang | `manage_users` |
+| GET | `/api/login-attempts` | Riwayat percobaan masuk terbaru (maks. 200), filter `?success=0` atau `1` | `view_logs` (Admin) |
+| DELETE | `/api/users/{id}` | Hapus pengguna (204). Akun sendiri tidak bisa diubah atau dihapus dari sini | `manage_users` |
 | GET | `/api/overview` | `{faq, products, wiring, datasheet}` | Login |
 | GET | `/api/products` | Daftar produk `{id, sku, name}` urut SKU | Login |
 | POST | `/api/products` | Tambah produk (`sku`, `name`); SKU diubah ke huruf besar | `write_products` |
@@ -31,7 +40,11 @@ Kesalahan validasi: `422 { "message": "...", "errors": { "kolom": ["pesan"] } }`
 | POST | `/api/products/{id}/datasheet-documents` | Unggah PDF (multipart: `title`, `rev`, `kind`, `file`) | `write_products` |
 | DELETE | `/api/datasheet-documents/{id}` | Hapus dokumen (204) | `write_products` |
 
-Hak akses: `write_faq` dan `write_selling` = semua role kecuali intern (dibuat terpisah supaya mudah dibedakan bila aturan role berubah). `write_products` = spv, admin, superadmin.
+Hak akses (delapan role: admin, spv, ts, mo, cs, sales, konten, intern):
+- `write_faq`, `write_selling`, `write_products` (SKU, spesifikasi, wiring, datasheet): semua role kecuali intern. Intern hanya melihat.
+- `view_logs`: hanya admin.
+- `manage_users`: admin (semua role) dan spv (hanya ts, mo, cs, sales, konten, intern).
+- Label tampilan: `sales` = Sales and Data, `konten` = Content and Branding.
 
 Aturan saran: produk tujuan harus ada dan tidak boleh sama dengan produk asal; satu tujuan hanya sekali per jenis untuk produk yang sama.
 
@@ -43,3 +56,11 @@ Aturan saran: produk tujuan harus ada dan tidak boleh sama dengan produk asal; s
 - SVG ditolak bila berisi skrip, event handler, foreignObject, atau referensi luar.
 - Datasheet: PDF saja, maks. 20 MB, isi diperiksa (`%PDF-`).
 - Batas PHP harus dinaikkan: `upload_max_filesize=20M`, `post_max_size=25M`; di nginx `client_max_body_size 25m;`.
+
+## Akun pertama di server
+```bash
+php artisan servolta:create-admin email@perusahaan.com --name="Nama Admin"   # sandi ditanyakan tanpa tampil
+```
+Bila email sudah ada, akun itu dijadikan Admin dan diaktifkan. Seeder akun uji tidak berjalan di produksi.
+
+Rincian autentikasi: lihat `docs/AUTH.md`.

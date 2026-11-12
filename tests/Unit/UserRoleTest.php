@@ -7,43 +7,55 @@ use PHPUnit\Framework\TestCase;
 
 class UserRoleTest extends TestCase
 {
-    public function test_superadmin_can_manage_every_role(): void
+    public function test_there_are_eight_roles_and_no_superadmin(): void
     {
-        foreach (UserRole::cases() as $role) {
-            $this->assertTrue(UserRole::Superadmin->canManage($role));
-        }
+        $this->assertCount(8, UserRole::cases());
+        $this->assertNull(UserRole::tryFrom('superadmin'));
     }
 
-    public function test_admin_cannot_manage_superadmin(): void
+    public function test_admin_manages_every_role(): void
     {
-        $this->assertFalse(UserRole::Admin->canManage(UserRole::Superadmin));
-        $this->assertTrue(UserRole::Admin->canManage(UserRole::Spv));
+        foreach (UserRole::cases() as $role) {
+            $this->assertTrue(UserRole::Admin->canManage($role));
+        }
     }
 
     public function test_spv_manages_only_staff_below_it(): void
     {
-        $this->assertTrue(UserRole::Spv->canManage(UserRole::Cs));
-        $this->assertTrue(UserRole::Spv->canManage(UserRole::Intern));
+        foreach ([UserRole::Ts, UserRole::Mo, UserRole::Cs, UserRole::Sales, UserRole::Konten, UserRole::Intern] as $role) {
+            $this->assertTrue(UserRole::Spv->canManage($role));
+        }
         $this->assertFalse(UserRole::Spv->canManage(UserRole::Spv));
         $this->assertFalse(UserRole::Spv->canManage(UserRole::Admin));
-        $this->assertFalse(UserRole::Spv->canManage(UserRole::Superadmin));
     }
 
-    public function test_staff_roles_cannot_manage_users(): void
+    public function test_only_admin_and_spv_manage_users(): void
     {
-        foreach ([UserRole::Cs, UserRole::Ts, UserRole::Mo, UserRole::Sales, UserRole::Konten, UserRole::Intern] as $role) {
-            $this->assertFalse($role->canManageUsers());
+        foreach (UserRole::cases() as $role) {
+            $this->assertSame(in_array($role, [UserRole::Admin, UserRole::Spv], true), $role->canManageUsers());
         }
     }
 
-    public function test_faq_and_product_write_permissions(): void
+    public function test_everyone_but_intern_can_write(): void
     {
-        $this->assertTrue(UserRole::Cs->canWriteFaq());
-        $this->assertTrue(UserRole::Konten->canWriteFaq());
-        $this->assertFalse(UserRole::Intern->canWriteFaq());
+        foreach (UserRole::cases() as $role) {
+            $expected = $role !== UserRole::Intern;
+            $this->assertSame($expected, $role->canWriteFaq(), $role->value);
+            $this->assertSame($expected, $role->canWriteProducts(), $role->value);
+            $this->assertSame($expected, $role->canWriteSelling(), $role->value);
+        }
+    }
 
-        $this->assertTrue(UserRole::Spv->canWriteProducts());
-        $this->assertFalse(UserRole::Cs->canWriteProducts());
-        $this->assertFalse(UserRole::Intern->canWriteProducts());
+    public function test_only_admin_can_view_login_history(): void
+    {
+        foreach (UserRole::cases() as $role) {
+            $this->assertSame($role === UserRole::Admin, $role->canViewLogs(), $role->value);
+        }
+    }
+
+    public function test_labels(): void
+    {
+        $this->assertSame('Sales and Data', UserRole::Sales->label());
+        $this->assertSame('Content and Branding', UserRole::Konten->label());
     }
 }
