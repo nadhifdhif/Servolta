@@ -77,7 +77,7 @@ class SellingTest extends TestCase
             ->assertJsonPath('message', 'Role Anda tidak boleh mengubah upselling dan cross selling.');
         $this->assertDatabaseCount('selling_suggestions', 0);
 
-        $writers = [UserRole::Cs, UserRole::Ts, UserRole::Mo, UserRole::Sales, UserRole::Konten, UserRole::Spv, UserRole::Admin, UserRole::Superadmin];
+        $writers = [UserRole::Cs, UserRole::Ts, UserRole::Mo, UserRole::Sales, UserRole::Konten, UserRole::Spv, UserRole::Admin];
         foreach ($writers as $i => $role) {
             $target = Product::query()->create(['sku' => "TARGET-{$i}", 'name' => "Tujuan {$i}"]);
 

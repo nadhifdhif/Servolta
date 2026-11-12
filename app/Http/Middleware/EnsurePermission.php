@@ -14,6 +14,8 @@ class EnsurePermission
 {
     private const MESSAGES = [
         'write_faq' => 'Role Anda tidak boleh mengubah FAQ.',
+        'view_logs' => 'Hanya Admin yang boleh melihat riwayat masuk.',
+        'manage_users' => 'Role Anda tidak boleh mengelola pengguna.',
         'write_selling' => 'Role Anda tidak boleh mengubah upselling dan cross selling.',
         'write_products' => 'Role Anda tidak boleh mengelola produk dan dokumen.',
     ];
@@ -25,6 +27,8 @@ class EnsurePermission
         $allowed = match ($permission) {
             'write_faq' => $role?->canWriteFaq() ?? false,
             'write_selling' => $role?->canWriteSelling() ?? false,
+            'manage_users' => $role?->canManageUsers() ?? false,
+            'view_logs' => $role?->canViewLogs() ?? false,
             'write_products' => $role?->canWriteProducts() ?? false,
             default => false,
         };

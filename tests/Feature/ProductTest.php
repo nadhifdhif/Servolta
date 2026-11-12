@@ -36,17 +36,18 @@ class ProductTest extends TestCase
         }
     }
 
-    public function test_only_privileged_roles_can_create_products(): void
+    public function test_every_role_except_intern_can_create_products(): void
     {
-        foreach ([UserRole::Cs, UserRole::Ts, UserRole::Mo, UserRole::Sales, UserRole::Konten, UserRole::Intern] as $role) {
-            $this->actAs($role)->postJson('/api/products', ['sku' => 'X-1', 'name' => 'X'])->assertForbidden();
-        }
+        $this->actAs(UserRole::Intern)->postJson('/api/products', ['sku' => 'X-1', 'name' => 'X'])
+            ->assertForbidden()
+            ->assertJsonPath('message', 'Role Anda tidak boleh mengelola produk dan dokumen.');
         $this->assertDatabaseCount('products', 0);
 
-        foreach ([UserRole::Spv, UserRole::Admin, UserRole::Superadmin] as $i => $role) {
+        $writers = [UserRole::Admin, UserRole::Spv, UserRole::Ts, UserRole::Mo, UserRole::Cs, UserRole::Sales, UserRole::Konten];
+        foreach ($writers as $i => $role) {
             $this->actAs($role)->postJson('/api/products', ['sku' => "SKU-{$i}", 'name' => 'Produk'])->assertCreated();
         }
-        $this->assertDatabaseCount('products', 3);
+        $this->assertDatabaseCount('products', count($writers));
     }
 
     public function test_sku_is_normalized_and_must_be_unique(): void
@@ -87,7 +88,7 @@ class ProductTest extends TestCase
         $p = Product::query()->create(['sku' => 'A-1', 'name' => 'Satu']);
         $p->faqs()->create(['category' => 'cs', 'question' => 'Q', 'answer' => 'A']);
 
-        $this->actAs(UserRole::Cs)->deleteJson("/api/products/{$p->id}")->assertForbidden();
+        $this->actAs(UserRole::Intern)->deleteJson("/api/products/{$p->id}")->assertForbidden();
 
         $this->actAs(UserRole::Admin)->deleteJson("/api/products/{$p->id}")->assertNoContent();
         $this->assertDatabaseCount('products', 0);
@@ -98,7 +99,7 @@ class ProductTest extends TestCase
     {
         $p = Product::query()->create(['sku' => 'A-1', 'name' => 'Satu']);
 
-        $this->actAs(UserRole::Cs)->putJson("/api/products/{$p->id}/specs", ['specs' => []])->assertForbidden();
+        $this->actAs(UserRole::Intern)->putJson("/api/products/{$p->id}/specs", ['specs' => []])->assertForbidden();
 
         $this->actAs(UserRole::Spv)->putJson("/api/products/{$p->id}/specs", ['specs' => [
             ['label' => 'Berat', 'value' => '9,5 kg'],

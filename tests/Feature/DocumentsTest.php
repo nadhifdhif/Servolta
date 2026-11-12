@@ -60,7 +60,7 @@ class DocumentsTest extends TestCase
         $this->assertEquals($document->size, Storage::disk('local')->size($document->path));
     }
 
-    public function test_readers_can_fetch_the_file_but_not_upload_or_delete(): void
+    public function test_readers_can_fetch_the_file_but_intern_cannot_upload_or_delete(): void
     {
         $id = $this->actAs(UserRole::Admin)->upload("/api/products/{$this->product->id}/wiring", [
             'title' => 'Foto', 'file' => UploadedFile::fake()->image('a.jpg', 100, 100),
@@ -71,7 +71,7 @@ class DocumentsTest extends TestCase
             ->assertHeader('Content-Type', 'image/jpeg')
             ->assertHeader('X-Content-Type-Options', 'nosniff');
 
-        $this->upload("/api/products/{$this->product->id}/wiring", [
+        $this->actAs(UserRole::Intern)->upload("/api/products/{$this->product->id}/wiring", [
             'title' => 'X', 'file' => UploadedFile::fake()->image('b.png'),
         ])->assertForbidden();
         $this->deleteJson("/api/wiring/{$id}")->assertForbidden();
@@ -154,11 +154,11 @@ class DocumentsTest extends TestCase
             ->assertJsonPath('data.documents.0.title', 'Datasheet SVR-2000');
     }
 
-    public function test_datasheet_accepts_only_real_pdfs_from_privileged_roles(): void
+    public function test_datasheet_accepts_only_real_pdfs_and_not_from_intern(): void
     {
         $url = "/api/products/{$this->product->id}/datasheet-documents";
 
-        $this->actAs(UserRole::Cs)->upload($url, ['title' => 'x', 'file' => $this->pdf()])->assertForbidden();
+        $this->actAs(UserRole::Intern)->upload($url, ['title' => 'x', 'file' => $this->pdf()])->assertForbidden();
 
         $this->actAs(UserRole::Spv);
         $this->upload($url, ['title' => 'x', 'file' => UploadedFile::fake()->image('a.png')])

@@ -56,13 +56,13 @@ class FaqTest extends TestCase
             ->assertForbidden()
             ->assertJsonPath('message', 'Role Anda tidak boleh mengubah FAQ.');
 
-        foreach ([UserRole::Cs, UserRole::Ts, UserRole::Mo, UserRole::Sales, UserRole::Konten, UserRole::Spv, UserRole::Admin, UserRole::Superadmin] as $role) {
+        foreach ([UserRole::Cs, UserRole::Ts, UserRole::Mo, UserRole::Sales, UserRole::Konten, UserRole::Spv, UserRole::Admin] as $role) {
             $this->actAs($role)
                 ->postJson("/api/products/{$this->product->id}/faqs", $this->payload())
                 ->assertCreated()
                 ->assertJsonPath('data.product_id', $this->product->id);
         }
-        $this->assertDatabaseCount('faqs', 8);
+        $this->assertDatabaseCount('faqs', 7);
     }
 
     public function test_validation_errors_use_the_expected_shape(): void

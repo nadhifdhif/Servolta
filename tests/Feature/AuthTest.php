@@ -14,40 +14,55 @@ class AuthTest extends TestCase
     private function makeUser(UserRole $role = UserRole::Cs, bool $active = true): User
     {
         return User::factory()->create([
-            'email' => 'tester@servolta.test',
+            'login_code' => 'TESTER01',
             'password' => 'password',
             'role' => $role,
             'is_active' => $active,
         ]);
     }
 
-    public function test_login_returns_token_and_user(): void
+    public function test_login_returns_token_and_user_without_email(): void
     {
         $this->makeUser(UserRole::Spv);
 
-        $this->postJson('/api/login', ['email' => 'tester@servolta.test', 'password' => 'password'])
+        $response = $this->postJson('/api/login', ['code' => 'TESTER01', 'password' => 'password'])
             ->assertOk()
-            ->assertJsonStructure(['token', 'token_type', 'user' => ['id', 'name', 'email', 'role', 'permissions']])
+            ->assertJsonStructure(['token', 'token_type', 'user' => ['id', 'name', 'login_code', 'employee_id', 'role', 'must_change_password', 'permissions']])
             ->assertJsonPath('user.role', 'spv')
+            ->assertJsonPath('user.login_code', 'TESTER01')
             ->assertJsonPath('user.permissions.manage_users', true);
+
+        $this->assertArrayNotHasKey('email', $response->json('user'));
     }
 
-    public function test_login_fails_with_wrong_password(): void
+    public function test_code_is_case_insensitive_and_trimmed(): void
     {
         $this->makeUser();
 
-        $this->postJson('/api/login', ['email' => 'tester@servolta.test', 'password' => 'salah'])
+        $this->postJson('/api/login', ['code' => '  tester01 ', 'password' => 'password'])->assertOk();
+    }
+
+    public function test_login_fails_with_wrong_password_and_reports_on_the_code_field(): void
+    {
+        $this->makeUser();
+
+        $this->postJson('/api/login', ['code' => 'TESTER01', 'password' => 'salah'])
             ->assertStatus(422)
-            ->assertJsonValidationErrors('email');
+            ->assertJsonValidationErrors('code');
     }
 
     public function test_inactive_user_cannot_login(): void
     {
         $this->makeUser(active: false);
 
-        $this->postJson('/api/login', ['email' => 'tester@servolta.test', 'password' => 'password'])
+        $this->postJson('/api/login', ['code' => 'TESTER01', 'password' => 'password'])
             ->assertStatus(422)
-            ->assertJsonValidationErrors('email');
+            ->assertJsonValidationErrors('code');
+    }
+
+    public function test_login_requires_both_fields(): void
+    {
+        $this->postJson('/api/login', [])->assertStatus(422)->assertJsonValidationErrors(['code', 'password']);
     }
 
     public function test_me_requires_authentication(): void
@@ -59,8 +74,7 @@ class AuthTest extends TestCase
     {
         $this->makeUser(UserRole::Intern);
 
-        $token = $this->postJson('/api/login', ['email' => 'tester@servolta.test', 'password' => 'password'])
-            ->json('token');
+        $token = $this->postJson('/api/login', ['code' => 'TESTER01', 'password' => 'password'])->json('token');
 
         $this->withToken($token)->getJson('/api/me')
             ->assertOk()
@@ -72,8 +86,7 @@ class AuthTest extends TestCase
     {
         $this->makeUser();
 
-        $token = $this->postJson('/api/login', ['email' => 'tester@servolta.test', 'password' => 'password'])
-            ->json('token');
+        $token = $this->postJson('/api/login', ['code' => 'TESTER01', 'password' => 'password'])->json('token');
 
         $this->assertDatabaseCount('personal_access_tokens', 1);
 

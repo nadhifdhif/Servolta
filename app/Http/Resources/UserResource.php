@@ -16,16 +16,20 @@ class UserResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
-            'email' => $this->email,
+            'login_code' => $this->login_code,
+            'employee_id' => $this->employee_id,
             'role' => $this->role->value,
             'role_label' => $this->role->label(),
             'is_active' => $this->is_active,
+            'is_locked' => $this->isLocked(),
+            'must_change_password' => $this->must_change_password,
             // Dipakai FE untuk menampilkan/menyembunyikan tombol. Server tetap yang memutuskan.
             'permissions' => [
                 'manage_users' => $this->role->canManageUsers(),
                 'write_faq' => $this->role->canWriteFaq(),
                 'write_selling' => $this->role->canWriteSelling(),
                 'write_products' => $this->role->canWriteProducts(),
+                'view_logs' => $this->role->canViewLogs(),
             ],
         ];
     }

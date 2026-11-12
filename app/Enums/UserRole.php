@@ -4,12 +4,11 @@ namespace App\Enums;
 
 enum UserRole: string
 {
-    case Superadmin = 'superadmin';
     case Admin = 'admin';
     case Spv = 'spv';
-    case Cs = 'cs';
     case Ts = 'ts';
     case Mo = 'mo';
+    case Cs = 'cs';
     case Sales = 'sales';
     case Konten = 'konten';
     case Intern = 'intern';
@@ -17,32 +16,28 @@ enum UserRole: string
     public function label(): string
     {
         return match ($this) {
-            self::Superadmin => 'Super Admin',
             self::Admin => 'Admin',
             self::Spv => 'Supervisor',
-            self::Cs => 'Customer Service',
             self::Ts => 'Technical Support',
             self::Mo => 'Marketing Officer',
-            self::Sales => 'Sales',
-            self::Konten => 'Konten',
+            self::Cs => 'Customer Service',
+            self::Sales => 'Sales and Data',
+            self::Konten => 'Content and Branding',
             self::Intern => 'Intern',
         };
     }
 
     /**
      * Role yang boleh dibuat/diubah/dihapus oleh role ini.
+     * Admin mengelola semua role; Supervisor hanya staf di bawahnya.
      *
      * @return list<self>
      */
     public function manageableRoles(): array
     {
         return match ($this) {
-            self::Superadmin => self::cases(),
-            self::Admin => array_values(array_filter(
-                self::cases(),
-                fn (self $role) => $role !== self::Superadmin,
-            )),
-            self::Spv => [self::Cs, self::Ts, self::Mo, self::Sales, self::Konten, self::Intern],
+            self::Admin => self::cases(),
+            self::Spv => [self::Ts, self::Mo, self::Cs, self::Sales, self::Konten, self::Intern],
             default => [],
         };
     }
@@ -57,19 +52,32 @@ enum UserRole: string
         return $this->manageableRoles() !== [];
     }
 
+    /** Riwayat percobaan masuk: hanya Admin. */
+    public function canViewLogs(): bool
+    {
+        return $this === self::Admin;
+    }
+
+    /** Semua role selain Intern boleh menulis. Intern hanya melihat. */
+    public function canWrite(): bool
+    {
+        return $this !== self::Intern;
+    }
+
     public function canWriteFaq(): bool
     {
-        return $this !== self::Intern;
+        return $this->canWrite();
     }
 
-    /** Upselling & cross selling. Untuk sekarang sama dengan FAQ (semua role kecuali intern). */
+    /** Upselling & cross selling. */
     public function canWriteSelling(): bool
     {
-        return $this !== self::Intern;
+        return $this->canWrite();
     }
 
+    /** SKU (produk + spesifikasi), wiring, dan datasheet. */
     public function canWriteProducts(): bool
     {
-        return in_array($this, [self::Superadmin, self::Admin, self::Spv], true);
+        return $this->canWrite();
     }
 }
