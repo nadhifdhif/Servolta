@@ -7,6 +7,7 @@ import LoginView from '../views/LoginView.vue'
 import SearchView from '../views/SearchView.vue'
 import SkuNewView from '../views/SkuNewView.vue'
 import SnippetsView from '../views/SnippetsView.vue'
+import UsersView from '../views/UsersView.vue'
 import WiringNewView from '../views/WiringNewView.vue'
 import WiringView from '../views/WiringView.vue'
 
@@ -40,6 +41,12 @@ const router = createRouter({
       name: 'wiring-new',
       component: WiringNewView,
       meta: { requiresAuth: true, perm: 'write_products' },
+    },
+    {
+      path: '/pengguna',
+      name: 'users',
+      component: UsersView,
+      meta: { requiresAuth: true, perm: 'manage_users' },
     },
     { path: '/login', name: 'login', component: LoginView, meta: { guestOnly: true } },
     { path: '/:pathMatch(.*)*', redirect: { name: 'home' } },

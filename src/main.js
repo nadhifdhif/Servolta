@@ -3,19 +3,26 @@ import './assets/main.css'
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 
+import { loadApi } from './api'
 import { setUnauthorizedHandler } from './api/unauthorized.js'
 import App from './App.vue'
 import router from './router'
 import { useAuthStore } from './stores/auth'
 
-const app = createApp(App)
-app.use(createPinia())
+async function start() {
+  await loadApi() // pilih mock atau backend asli sebelum ada yang memakainya
 
-// Token kedaluwarsa/dicabut di server -> bersihkan sesi dan kembali ke halaman login.
-setUnauthorizedHandler(() => {
-  useAuthStore().clearSession()
-  router.push({ name: 'login' })
-})
+  const app = createApp(App)
+  app.use(createPinia())
 
-app.use(router)
-app.mount('#app')
+  // Token kedaluwarsa/dicabut di server -> bersihkan sesi dan kembali ke halaman login.
+  setUnauthorizedHandler(() => {
+    useAuthStore().clearSession()
+    router.push({ name: 'login' })
+  })
+
+  app.use(router)
+  app.mount('#app')
+}
+
+start()

@@ -11,18 +11,17 @@ import { ROLES, ROLE_LABELS, permissionsFor } from '../lib/roles.js'
 const DEFAULT_PASSWORD = 'password'
 
 const SAMPLE_NAMES = {
-  superadmin: 'Rangga Pratama',
   admin: 'Dewi Lestari',
   spv: 'Bagas Saputra',
   cs: 'Citra Maharani',
-  ts: 'Naufal Nadhif',
+  ts: 'Taufik Hidayat',
   mo: 'Maya Anggraini',
   sales: 'Salsa Wulandari',
   konten: 'Kevin Aditya',
   intern: 'Intan Permata',
 }
 
-function account({
+export function buildAccount({
   id,
   role,
   name = SAMPLE_NAMES[role],
@@ -45,10 +44,10 @@ function account({
 }
 
 export const MOCK_ACCOUNTS = [
-  ...ROLES.map((role, index) => account({ id: index + 1, role })),
+  ...ROLES.map((role, index) => buildAccount({ id: index + 1, role })),
 
   // Khusus mock: untuk menguji pesan "akun dinonaktifkan" saat login.
-  account({
+  buildAccount({
     id: 100,
     role: 'cs',
     name: 'Akun Nonaktif',

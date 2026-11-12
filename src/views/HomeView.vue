@@ -5,7 +5,6 @@ import { api } from '../api'
 import Icon from '../components/Icon.vue'
 import ProductCombobox from '../components/ProductCombobox.vue'
 import { useRecent } from '../composables/useRecent.js'
-import { SNIPPETS } from '../data/snippets.js'
 import { firstName, greetingFor } from '../lib/greeting.js'
 import { useAuthStore } from '../stores/auth'
 
@@ -29,33 +28,26 @@ watch(picked, (product) => {
   if (product) router.push({ name: 'faq', query: { sku: product.sku } })
 })
 
-const meta = (key, unit) =>
-  overview.value?.[key] != null ? { n: overview.value[key], unit } : null
-
 const lookups = computed(() => [
   {
     to: 'faq',
     title: 'FAQ',
     text: 'Jawaban siap salin, plus saran upselling dan cross selling untuk tiap produk.',
-    meta: meta('faq', 'FAQ'),
   },
   {
     to: 'wiring',
     title: 'Wiring',
     text: 'Gambar pemasangan kabel per produk.',
-    meta: meta('wiring', 'gambar'),
   },
   {
     to: 'datasheet',
     title: 'Datasheet',
     text: 'Spesifikasi ringkas dan dokumen PDF.',
-    meta: meta('datasheet', 'PDF'),
   },
   {
     to: 'snippets',
     title: 'Contoh kode',
     text: 'Arduino/ESP32 untuk DHT22, PZEM-004T, OLED 0.96", dan MPU6050.',
-    meta: { n: SNIPPETS.length, unit: 'contoh' },
   },
 ])
 
@@ -74,14 +66,21 @@ const additions = computed(() => [
     title: 'Tambah SKU',
     text: 'Daftarkan produk baru beserta spesifikasinya.',
     allowed: can('write_products'),
-    denied: 'Khusus supervisor ke atas.',
+    denied: 'Tidak tersedia untuk role Anda.',
   },
   {
     to: 'wiring-new',
     title: 'Tambah wiring',
     text: 'Unggah gambar pemasangan kabel (JPG, PNG, SVG, HEIC).',
     allowed: can('write_products'),
-    denied: 'Khusus supervisor ke atas.',
+    denied: 'Tidak tersedia untuk role Anda.',
+  },
+  {
+    to: 'users',
+    title: 'Pengguna',
+    text: 'Tambah akun dan atur role tim.',
+    allowed: can('manage_users'),
+    hidden: !can('manage_users'), // tidak ditampilkan sama sekali bagi yang tidak berhak
   },
 ])
 </script>
@@ -98,6 +97,25 @@ const additions = computed(() => [
       </div>
     </header>
 
+    <dl v-if="overview" class="readout" aria-label="Ringkasan data">
+      <div>
+        <dt>FAQ</dt>
+        <dd>{{ overview.faq }}</dd>
+      </div>
+      <div>
+        <dt>Produk</dt>
+        <dd>{{ overview.products }}</dd>
+      </div>
+      <div v-if="overview.wiring != null">
+        <dt>Wiring</dt>
+        <dd>{{ overview.wiring }}</dd>
+      </div>
+      <div v-if="overview.datasheet != null">
+        <dt>Datasheet</dt>
+        <dd>{{ overview.datasheet }}</dd>
+      </div>
+    </dl>
+
     <div class="home-columns">
       <section aria-labelledby="lookup-title">
         <h2 id="lookup-title" class="section-title">Cari dan salin</h2>
@@ -108,9 +126,6 @@ const additions = computed(() => [
                 <h3>{{ item.title }}</h3>
                 <p>{{ item.text }}</p>
               </div>
-              <span v-if="item.meta" class="index-meta">
-                <b>{{ item.meta.n }}</b> {{ item.meta.unit }}
-              </span>
               <Icon name="arrow" :size="18" />
             </RouterLink>
           </li>
@@ -120,7 +135,7 @@ const additions = computed(() => [
       <section aria-labelledby="add-title">
         <h2 id="add-title" class="section-title">Tambah data</h2>
         <ul class="index">
-          <li v-for="item in additions" :key="item.to">
+          <li v-for="item in additions.filter((i) => !i.hidden)" :key="item.to">
             <RouterLink v-if="item.allowed" :to="{ name: item.to }" class="index-row">
               <div>
                 <h3>{{ item.title }}</h3>

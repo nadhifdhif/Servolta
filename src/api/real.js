@@ -13,18 +13,24 @@
 //   GET    /datasheet-documents/{id}/file -> biner PDF
 //   POST   /products/{id}/datasheet-documents -> multipart: title, rev, file (PDF, maks. 20 MB)
 //   DELETE /datasheet-documents/{id}  -> 204
-//   POST   /products                  -> { data: { id, sku, name } }      (spv ke atas)
+//   POST   /products                  -> { data: { id, sku, name } }      (semua role kecuali intern)
 //   PUT    /products/{id}/specs       -> body { specs: [{ label, value }] }
 //   GET    /products/{id}/selling     -> { data: [{ id, product_id, type: 'upsell'|'cross', target: { id, sku, name }, pitch, updated_at }] }
 //   POST   /products/{id}/selling     -> body { type, target_id, pitch }  (semua role kecuali intern)
 //   PUT    /selling/{id}              -> body { type, target_id, pitch }
 //   DELETE /selling/{id}              -> 204
+//   GET    /users                     -> { data: [user] }  (admin: semua; spv: staf di bawahnya)
+//   POST   /users                     -> body { name, email, role, password, is_active }
+//   PUT    /users/{id}                -> body sama; password kosong = tidak diganti
+//   DELETE /users/{id}                -> 204
 
 import { ApiError } from './errors.js'
 import { tokenStorage } from './token.js'
 import { notifyUnauthorized } from './unauthorized.js'
 
-const BASE = (import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api').replace(/\/$/, '')
+// Produksi: bawaan "/api" (satu domain dengan frontend lewat Nginx). Pengembangan: backend lokal.
+const DEFAULT_API = import.meta.env.PROD ? '/api' : 'http://localhost:8000/api'
+const BASE = (import.meta.env.VITE_API_URL || DEFAULT_API).replace(/\/$/, '')
 
 async function request(method, path, body) {
   const headers = { Accept: 'application/json' }
@@ -116,3 +122,8 @@ export const createSelling = async (productId, payload) =>
 export const updateSelling = async (id, payload) =>
   (await request('PUT', `/selling/${id}`, payload)).data
 export const deleteSelling = (id) => request('DELETE', `/selling/${id}`)
+export const listUsers = async () => (await request('GET', '/users')).data
+export const createUser = async (payload) => (await request('POST', '/users', payload)).data
+export const updateUser = async (id, payload) =>
+  (await request('PUT', `/users/${id}`, payload)).data
+export const deleteUser = (id) => request('DELETE', `/users/${id}`)

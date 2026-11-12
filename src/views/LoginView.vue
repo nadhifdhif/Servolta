@@ -1,8 +1,7 @@
 <script setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ApiError, isMock } from '../api'
-import { MOCK_ACCOUNTS } from '../api/mockAccounts.js'
+import { ApiError, api, isMock } from '../api'
 import Icon from '../components/Icon.vue'
 import { useAuthStore } from '../stores/auth'
 
@@ -15,6 +14,12 @@ const password = ref('')
 const showPassword = ref(false)
 const loading = ref(false)
 const error = ref('')
+const demoAccounts = ref([])
+
+// Akun demo hanya ada di mode contoh; di mode sungguhan bagian ini tidak ada sama sekali.
+onMounted(() => {
+  if (isMock) demoAccounts.value = api.listDemoAccounts?.() ?? []
+})
 
 function safeRedirect(target) {
   return typeof target === 'string' && target.startsWith('/') && !target.startsWith('//')
@@ -42,7 +47,10 @@ const quickLogin = (account) => doLogin(account.email, account.password)
 <template>
   <section class="login-page">
     <form class="card login-card" @submit.prevent="submit">
-      <h1>Servolta</h1>
+      <h1 class="login-title">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        Servolta
+      </h1>
       <p class="muted">Masuk dengan akun yang diberikan admin.</p>
 
       <p v-if="error" class="alert alert-error" role="alert">
@@ -98,7 +106,7 @@ const quickLogin = (account) => doLogin(account.email, account.password)
         Kata sandi semua akun: <code>password</code>. Klik salah satu untuk masuk.
       </p>
       <ul class="account-grid">
-        <li v-for="account in MOCK_ACCOUNTS" :key="account.id">
+        <li v-for="account in demoAccounts" :key="account.id">
           <button type="button" class="account" :disabled="loading" @click="quickLogin(account)">
             <span class="account-meta">
               <strong>{{ account.role_label }}</strong>

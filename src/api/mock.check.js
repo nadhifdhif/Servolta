@@ -118,8 +118,8 @@ test('wiring & datasheet: semua role bisa melihat', async () => {
   }
 })
 
-test('unggah wiring: hanya role write_products, dengan validasi', async () => {
-  await loginAs('cs@servolta.test')
+test('unggah wiring: semua role kecuali intern, dengan validasi', async () => {
+  await loginAs('intern@servolta.test')
   await rejects(mock.createWiring(1, { title: 'x', file: pdfFile('a.png') }), 403)
   await rejects(mock.deleteWiring(1), 403)
 
@@ -179,9 +179,9 @@ test('ringkasan beranda menghitung wiring dan datasheet', async () => {
   assert.equal(o.datasheet, 13)
 })
 
-test('tambah SKU: hanya spv ke atas, validasi, SKU unik, muncul di daftar dan datasheet', async () => {
+test('tambah SKU: semua role kecuali intern, validasi, SKU unik, muncul di daftar dan datasheet', async () => {
   mock.resetMock()
-  await loginAs('cs@servolta.test')
+  await loginAs('intern@servolta.test')
   await rejects(mock.createProduct({ sku: 'X-1', name: 'X' }), 403)
 
   await loginAs('spv@servolta.test')
@@ -227,7 +227,7 @@ test('upselling & cross selling: semua role bisa lihat, intern tidak bisa tulis'
 })
 
 test('upselling & cross selling: CS sampai role teratas bisa menambah, mengubah, menghapus', async () => {
-  for (const role of ['cs', 'ts', 'mo', 'sales', 'konten', 'spv', 'admin', 'superadmin']) {
+  for (const role of ['cs', 'ts', 'mo', 'sales', 'konten', 'spv', 'admin']) {
     mock.resetMock()
     await loginAs(`${role}@servolta.test`)
     const created = await mock.createSelling(2, {
@@ -276,4 +276,123 @@ test('produk baru punya daftar selling kosong dan bisa dipilih sebagai tujuan', 
   assert.equal(e.target.sku, 'NEW-1')
   mock.resetMock()
   assert.ok(!(await mock.listSelling(1)).some((x) => x.target.sku === 'NEW-1'))
+})
+
+test('pengguna: hanya admin dan spv yang bisa mengelola', async () => {
+  mock.resetMock()
+  for (const role of ['ts', 'mo', 'cs', 'sales', 'konten', 'intern']) {
+    await loginAs(`${role}@servolta.test`)
+    await rejects(mock.listUsers(), 403)
+    await rejects(
+      mock.createUser({ name: 'x', email: 'x@y.test', role: 'cs', password: 'sandi-panjang-1' }),
+      403,
+    )
+  }
+})
+
+test('pengguna: admin melihat semua, spv hanya staf di bawahnya', async () => {
+  mock.resetMock()
+  await loginAs('admin@servolta.test')
+  assert.equal((await mock.listUsers()).length, MOCK_ACCOUNTS.length)
+
+  await loginAs('spv@servolta.test')
+  const roles = (await mock.listUsers()).map((u) => u.role)
+  assert.ok(roles.length > 0)
+  assert.ok(!roles.includes('admin') && !roles.includes('spv'))
+  assert.ok((await mock.listUsers()).every((u) => !('password' in u)))
+})
+
+test('pengguna: tambah, login dengan akun baru, ubah, nonaktifkan, hapus', async () => {
+  mock.resetMock()
+  await loginAs('spv@servolta.test')
+  await rejects(
+    mock.createUser({ name: 'x', email: 'x@y.test', role: 'spv', password: 'sandi-panjang-1' }),
+    422,
+  )
+  await rejects(
+    mock.createUser({ name: 'x', email: 'x@y.test', role: 'admin', password: 'sandi-panjang-1' }),
+    422,
+  )
+  await rejects(
+    mock.createUser({
+      name: 'x',
+      email: 'cs@servolta.test',
+      role: 'cs',
+      password: 'sandi-panjang-1',
+    }),
+    422,
+  )
+  await rejects(
+    mock.createUser({ name: 'x', email: 'x@y.test', role: 'cs', password: 'pendek' }),
+    422,
+  )
+
+  const created = await mock.createUser({
+    name: ' Orang Baru ',
+    email: ' Baru@Servolta.TEST ',
+    role: 'konten',
+    password: 'sandi-panjang-1',
+  })
+  assert.equal(created.email, 'baru@servolta.test')
+  assert.equal(created.role_label, 'Content and Branding')
+  assert.equal(created.permissions.write_faq, true)
+  assert.ok(!('password' in created))
+
+  const session = await mock.login('BARU@servolta.test', 'sandi-panjang-1')
+  assert.equal(session.user.role, 'konten')
+
+  const updated = await mock.updateUser(created.id, {
+    name: 'Nama Lain',
+    email: 'baru@servolta.test',
+    role: 'intern',
+    password: '',
+  })
+  assert.equal(updated.role, 'intern')
+  assert.equal(updated.permissions.write_faq, false)
+  await mock.login('baru@servolta.test', 'sandi-panjang-1') // sandi lama tetap berlaku
+
+  await mock.updateUser(created.id, {
+    name: 'Nama Lain',
+    email: 'baru@servolta.test',
+    role: 'intern',
+    password: 'sandi-baru-123',
+  })
+  await rejects(mock.login('baru@servolta.test', 'sandi-panjang-1'), 422)
+  await mock.login('baru@servolta.test', 'sandi-baru-123')
+
+  await mock.updateUser(created.id, {
+    name: 'Nama Lain',
+    email: 'baru@servolta.test',
+    role: 'intern',
+    is_active: false,
+  })
+  await rejects(mock.login('baru@servolta.test', 'sandi-baru-123'), 422)
+
+  await loginAs('spv@servolta.test')
+  await mock.deleteUser(created.id)
+  assert.ok(!(await mock.listUsers()).some((u) => u.id === created.id))
+  await rejects(mock.deleteUser(created.id), 404)
+})
+
+test('pengguna: batas supervisor, akun sendiri, dan email unik saat ubah', async () => {
+  mock.resetMock()
+  const me = await loginAs('spv@servolta.test')
+  const adminId = MOCK_ACCOUNTS.find((a) => a.role === 'admin').id
+  const csAccount = MOCK_ACCOUNTS.find((a) => a.email === 'cs@servolta.test')
+  const body = (a, extra = {}) => ({ name: a.name, email: a.email, role: a.role, ...extra })
+
+  await rejects(mock.updateUser(adminId, { name: 'x', email: 'a@b.test', role: 'cs' }), 403)
+  await rejects(mock.deleteUser(adminId), 403)
+  await rejects(mock.updateUser(me.user.id, body(me.user)), 403) // akun sendiri
+  await rejects(mock.deleteUser(me.user.id), 403)
+  await rejects(mock.updateUser(csAccount.id, body(csAccount, { role: 'spv' })), 422) // tidak bisa menaikkan jadi spv
+  await rejects(mock.updateUser(csAccount.id, body(csAccount, { email: 'ts@servolta.test' })), 422) // email milik akun lain
+  await mock.updateUser(csAccount.id, body(csAccount, { name: 'Nama Baru' })) // email sendiri tidak dianggap kembar
+
+  await loginAs('admin@servolta.test')
+  await mock.updateUser(MOCK_ACCOUNTS.find((a) => a.role === 'spv').id, {
+    name: 'Spv Baru',
+    email: 'spv@servolta.test',
+    role: 'admin',
+  })
 })

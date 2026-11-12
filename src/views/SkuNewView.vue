@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { api, ApiError } from '../api'
 import Icon from '../components/Icon.vue'
 import { useToast } from '../composables/useToast.js'
+import { hints } from '../config.js'
 import { cleanSpecs, normalizeSku, validateProduct } from '../lib/products.js'
 
 const toast = useToast()
@@ -122,7 +123,7 @@ async function submit() {
             class="input input-mono"
             autocomplete="off"
             spellcheck="false"
-            placeholder="Contoh: SVR-3000"
+            :placeholder="hints.sku"
             @blur="sku = normalizeSku(sku)"
           />
           <p v-if="errors.sku" class="field-error">{{ errors.sku[0] }}</p>
@@ -135,7 +136,7 @@ async function submit() {
             v-model="name"
             class="input"
             autocomplete="off"
-            placeholder="Contoh: Stabilizer Servo 3000VA"
+            :placeholder="hints.skuName"
           />
           <p v-if="errors.name" class="field-error">{{ errors.name[0] }}</p>
         </div>
