@@ -6,7 +6,8 @@ import { MOCK_SELLING } from './mockSelling.js'
 import { extOf, todayIso, validateUpload } from '../lib/files.js'
 import { cleanSpecs, normalizeSku, validateProduct } from '../lib/products.js'
 import { ROLE_LABELS, manageableRoles } from '../lib/roles.js'
-import { normalizeEmail, validateUser } from '../lib/users.js'
+import { generateCode, normalizeCode } from '../lib/loginCode.js'
+import { validatePasswordChange, validateUser } from '../lib/users.js'
 import { makeSimplePdf } from '../lib/pdf.js'
 import { validateSelling } from '../lib/selling.js'
 import { specsToText } from '../lib/specs.js'
@@ -81,12 +82,21 @@ let nextFileId = 1000
 // tersimpan di browser. Perubahan dari menu Pengguna berlaku selama halaman tidak di-refresh.
 let accounts = structuredClone(MOCK_ACCOUNTS)
 
-function currentUser() {
+// `allowTemp`: endpoint yang boleh dipakai walau sandi sementara belum diganti (me, ganti sandi).
+function currentUser({ allowTemp = false } = {}) {
   const token = tokenStorage.get() ?? ''
   const found = token.startsWith('mock.')
     ? accounts.find((a) => String(a.id) === token.slice(5))
     : null
   if (!found || !found.is_active) throw new ApiError('Unauthenticated.', 401)
+  if (found.must_change_password && !allowTemp) {
+    throw new ApiError(
+      'Ganti kata sandi sementara Anda terlebih dahulu.',
+      403,
+      {},
+      'password_change_required',
+    )
+  }
   return toPublicUser(found)
 }
 
@@ -104,19 +114,33 @@ function validateFaq(payload) {
   if (Object.keys(errors).length) throw new ApiError('Data tidak valid.', 422, errors)
 }
 
-export async function login(email, password) {
+const LOCKOUT_ATTEMPTS = 10
+const LOCKOUT_MS = 15 * 60 * 1000
+const FAIL_MESSAGE = 'Kode atau kata sandi salah, atau akun sedang terkunci sementara.'
+
+export async function login(code, password) {
   await delay()
-  const found = accounts.find((a) => a.email === normalizeEmail(email))
-  if (!found || found.password !== password) {
-    throw new ApiError('Email atau kata sandi salah.', 422, {
-      email: ['Email atau kata sandi salah.'],
-    })
+  const found = accounts.find((a) => a.login_code === normalizeCode(code))
+  const locked = Boolean(found && found.locked_until > Date.now())
+
+  if (!found || locked || found.password !== password) {
+    // Salah sandi berulang mengunci akun sementara (tidak diperpanjang saat sudah terkunci).
+    if (found && !locked) {
+      found.failed_logins += 1
+      if (found.failed_logins >= LOCKOUT_ATTEMPTS) {
+        found.failed_logins = 0
+        found.locked_until = Date.now() + LOCKOUT_MS
+      }
+    }
+    throw new ApiError(FAIL_MESSAGE, 422, { code: [FAIL_MESSAGE] })
   }
   if (!found.is_active) {
     throw new ApiError('Akun ini dinonaktifkan. Hubungi admin.', 422, {
-      email: ['Akun ini dinonaktifkan. Hubungi admin.'],
+      code: ['Akun ini dinonaktifkan. Hubungi admin.'],
     })
   }
+  found.failed_logins = 0
+  found.locked_until = 0
   return { token: `mock.${found.id}`, token_type: 'Bearer', user: toPublicUser(found) }
 }
 
@@ -126,7 +150,39 @@ export async function logout() {
 
 export async function me() {
   await delay(0.4)
-  return currentUser()
+  return currentUser({ allowTemp: true })
+}
+
+export async function updateProfile({ name }) {
+  await delay()
+  const user = currentUser({ allowTemp: true })
+  if (!String(name ?? '').trim()) {
+    throw new ApiError('Data tidak valid.', 422, { name: ['Nama wajib diisi.'] })
+  }
+  const target = accounts.find((a) => a.id === user.id)
+  target.name = name.trim()
+  return toPublicUser(target)
+}
+
+export async function changePassword(payload) {
+  await delay()
+  const user = currentUser({ allowTemp: true })
+  const target = accounts.find((a) => a.id === user.id)
+  if (target.password !== payload.current_password) {
+    throw new ApiError('Data tidak valid.', 422, {
+      current_password: ['Kata sandi saat ini salah.'],
+    })
+  }
+  const errors = validatePasswordChange(payload)
+  if (Object.keys(errors).length) throw new ApiError('Data tidak valid.', 422, errors)
+
+  target.password = payload.password
+  target.must_change_password = false
+  return { message: 'Kata sandi diubah.', user: toPublicUser(target) }
+}
+
+export async function logoutAll() {
+  await delay(0.4)
 }
 
 export async function listProducts() {
@@ -443,22 +499,40 @@ export async function listUsers() {
     .map(toPublicUser)
 }
 
+function uniqueCode() {
+  const taken = new Set(accounts.map((a) => a.login_code))
+  let code
+  do code = generateCode()
+  while (taken.has(code))
+  return code
+}
+
+const employeeIdOf = (value) => (String(value ?? '').trim() ? Number(value) : null)
+
 export async function createUser(payload) {
   await delay()
   const actor = requireManageUsers()
-  const errors = validateUser(payload, {
-    actorRole: actor.role,
-    otherEmails: accounts.map((a) => a.email),
-  })
+  // Seperti server: kode yang dikosongkan dibuat acak.
+  const code = normalizeCode(payload.login_code) || uniqueCode()
+  const errors = validateUser(
+    { ...payload, login_code: code },
+    {
+      actorRole: actor.role,
+      otherCodes: accounts.map((a) => a.login_code),
+      otherEmployeeIds: accounts.map((a) => a.employee_id).filter(Boolean),
+    },
+  )
   if (Object.keys(errors).length) throw new ApiError('Data tidak valid.', 422, errors)
 
   const created = buildAccount({
     id: Math.max(0, ...accounts.map((a) => a.id)) + 1,
     role: payload.role,
     name: payload.name.trim(),
-    email: normalizeEmail(payload.email),
+    login_code: code,
+    employee_id: employeeIdOf(payload.employee_id),
     password: payload.password,
     is_active: payload.is_active !== false,
+    must_change_password: true, // sandi dari admin hanya sementara
   })
   accounts = [...accounts, created]
   return toPublicUser(created)
@@ -470,21 +544,41 @@ export async function updateUser(id, payload) {
   const target = manageableTarget(actor, id)
   const errors = validateUser(payload, {
     actorRole: actor.role,
-    otherEmails: accounts.filter((a) => a.id !== id).map((a) => a.email),
+    otherCodes: accounts.filter((a) => a.id !== id).map((a) => a.login_code),
+    otherEmployeeIds: accounts
+      .filter((a) => a.id !== id)
+      .map((a) => a.employee_id)
+      .filter(Boolean),
     isEdit: true,
   })
   if (Object.keys(errors).length) throw new ApiError('Data tidak valid.', 422, errors)
 
-  const updated = buildAccount({
-    id,
-    role: payload.role,
-    name: payload.name.trim(),
-    email: normalizeEmail(payload.email),
-    password: payload.password ? payload.password : target.password,
-    is_active: payload.is_active ?? target.is_active,
-  })
+  const updated = {
+    ...buildAccount({
+      id,
+      role: payload.role,
+      name: payload.name.trim(),
+      login_code: normalizeCode(payload.login_code),
+      employee_id: employeeIdOf(payload.employee_id),
+      password: payload.password ? payload.password : target.password,
+      is_active: payload.is_active ?? target.is_active,
+      // reset oleh admin: wajib diganti saat masuk berikutnya
+      must_change_password: payload.password ? true : target.must_change_password,
+    }),
+    failed_logins: target.failed_logins,
+    locked_until: target.locked_until,
+  }
   accounts = accounts.map((a) => (a.id === id ? updated : a))
   return toPublicUser(updated)
+}
+
+export async function unlockUser(id) {
+  await delay()
+  const actor = requireManageUsers()
+  const target = manageableTarget(actor, id)
+  target.failed_logins = 0
+  target.locked_until = 0
+  return toPublicUser(target)
 }
 
 export async function deleteUser(id) {

@@ -3,13 +3,15 @@ import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ApiError, api, isMock } from '../api'
 import Icon from '../components/Icon.vue'
+import { hints } from '../config.js'
+import { normalizeCode } from '../lib/loginCode.js'
 import { useAuthStore } from '../stores/auth'
 
 const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
 
-const email = ref('')
+const code = ref('')
 const password = ref('')
 const showPassword = ref(false)
 const loading = ref(false)
@@ -27,21 +29,21 @@ function safeRedirect(target) {
     : '/'
 }
 
-async function doLogin(emailValue, passwordValue) {
+async function doLogin(codeValue, passwordValue) {
   loading.value = true
   error.value = ''
   try {
-    await auth.login(emailValue, passwordValue)
+    await auth.login(codeValue, passwordValue)
     router.replace(safeRedirect(route.query.redirect))
   } catch (e) {
-    error.value = e instanceof ApiError ? (e.errors?.email?.[0] ?? e.message) : 'Terjadi kesalahan.'
+    error.value = e instanceof ApiError ? (e.errors?.code?.[0] ?? e.message) : 'Terjadi kesalahan.'
   } finally {
     loading.value = false
   }
 }
 
-const submit = () => doLogin(email.value, password.value)
-const quickLogin = (account) => doLogin(account.email, account.password)
+const submit = () => doLogin(normalizeCode(code.value), password.value)
+const quickLogin = (account) => doLogin(account.login_code, account.password)
 </script>
 
 <template>
@@ -51,21 +53,23 @@ const quickLogin = (account) => doLogin(account.email, account.password)
         <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
         Servolta
       </h1>
-      <p class="muted">Masuk dengan akun yang diberikan admin.</p>
+      <p class="muted">Masuk dengan kode dan kata sandi dari admin.</p>
 
       <p v-if="error" class="alert alert-error" role="alert">
         <Icon name="info" :size="16" /> {{ error }}
       </p>
 
       <div class="field">
-        <label class="label" for="email">Email</label>
+        <label class="label" for="code">Kode</label>
         <input
-          id="email"
-          v-model="email"
-          class="input"
-          type="email"
+          id="code"
+          v-model="code"
+          class="input input-mono input-code"
+          type="text"
           autocomplete="username"
-          placeholder="nama@perusahaan.com"
+          autocapitalize="characters"
+          spellcheck="false"
+          :placeholder="hints.code"
           required
         />
       </div>
@@ -110,7 +114,7 @@ const quickLogin = (account) => doLogin(account.email, account.password)
           <button type="button" class="account" :disabled="loading" @click="quickLogin(account)">
             <span class="account-meta">
               <strong>{{ account.role_label }}</strong>
-              <small>{{ account.name }} · {{ account.email }}</small>
+              <small>{{ account.name }} · {{ account.login_code }}</small>
               <small v-if="account.note" class="account-note">{{ account.note }}</small>
             </span>
           </button>

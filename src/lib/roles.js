@@ -29,6 +29,7 @@ export function permissionsFor(role) {
     write_faq: canWrite,
     write_selling: canWrite, // upselling & cross selling
     write_products: canWrite, // SKU, spesifikasi, wiring, datasheet
+    view_logs: role === 'admin', // riwayat percobaan masuk
   }
 }
 
@@ -36,7 +37,7 @@ export function buildUser({ id, role }) {
   return {
     id,
     name: ROLE_LABELS[role],
-    email: `${role}@servolta.test`,
+    login_code: `${role.toUpperCase()}01`,
     role,
     role_label: ROLE_LABELS[role],
     is_active: true,

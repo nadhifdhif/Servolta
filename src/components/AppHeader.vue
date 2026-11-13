@@ -14,6 +14,7 @@ const MENU = [
   { to: '/datasheet', label: 'Datasheet', carry: true },
   { to: '/kode', label: 'Kode', carry: false },
   { to: '/pengguna', label: 'Pengguna', carry: false, perm: 'manage_users' },
+  { to: '/akun', label: 'Akun', carry: false },
 ]
 
 const menu = computed(() => MENU.filter((item) => !item.perm || auth.permissions[item.perm]))
@@ -43,7 +44,7 @@ function resetMock() {
         Servolta
       </RouterLink>
 
-      <nav v-if="auth.user" class="menu" aria-label="Menu utama">
+      <nav v-if="auth.user && !auth.mustChangePassword" class="menu" aria-label="Menu utama">
         <RouterLink
           v-for="item in menu"
           :key="item.to"
@@ -57,9 +58,6 @@ function resetMock() {
 
       <div v-if="auth.user" class="header-right">
         <template v-if="isMock">
-          <span class="badge badge-warn hide-sm" title="Data contoh tersimpan di browser ini"
-            >Mock</span
-          >
           <button type="button" class="link-btn hide-sm" @click="resetMock">Reset data</button>
         </template>
         <div class="user-meta hide-sm">

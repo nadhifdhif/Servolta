@@ -38,7 +38,8 @@ test('semua role selain intern bisa menulis FAQ, saran, SKU, wiring, dan datashe
 
 test('buildUser membentuk objek seperti UserResource backend', () => {
   const user = buildUser({ id: 4, role: 'cs' })
-  assert.equal(user.email, 'cs@servolta.test')
+  assert.equal(user.login_code, 'CS01')
+  assert.ok(!('email' in user))
   assert.equal(user.role_label, 'Customer Service')
   assert.ok('permissions' in user)
 })

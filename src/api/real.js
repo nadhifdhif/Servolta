@@ -20,13 +20,15 @@
 //   PUT    /selling/{id}              -> body { type, target_id, pitch }
 //   DELETE /selling/{id}              -> 204
 //   GET    /users                     -> { data: [user] }  (admin: semua; spv: staf di bawahnya)
-//   POST   /users                     -> body { name, email, role, password, is_active }
+//   POST   /users                     -> body { name, login_code (kosong = acak), employee_id, role, password, is_active }
 //   PUT    /users/{id}                -> body sama; password kosong = tidak diganti
+//   POST   /users/{id}/unlock         -> { data: user }  (buka kunci akun)
 //   DELETE /users/{id}                -> 204
+//   Masuk memakai { code, password } (kode login, bukan email); sandi sementara -> 403 code=password_change_required
 
 import { ApiError } from './errors.js'
 import { tokenStorage } from './token.js'
-import { notifyUnauthorized } from './unauthorized.js'
+import { notifyPasswordChange, notifyUnauthorized } from './unauthorized.js'
 
 // Produksi: bawaan "/api" (satu domain dengan frontend lewat Nginx). Pengembangan: backend lokal.
 const DEFAULT_API = import.meta.env.PROD ? '/api' : 'http://localhost:8000/api'
@@ -56,7 +58,13 @@ async function request(method, path, body) {
 
   if (!response.ok) {
     if (response.status === 401 && path !== '/login') notifyUnauthorized()
-    throw new ApiError(data?.message ?? 'Terjadi kesalahan.', response.status, data?.errors ?? {})
+    if (response.status === 403 && data?.code === 'password_change_required') notifyPasswordChange()
+    throw new ApiError(
+      data?.message ?? 'Terjadi kesalahan.',
+      response.status,
+      data?.errors ?? {},
+      data?.code ?? '',
+    )
   }
   return data
 }
@@ -86,9 +94,12 @@ function uploadForm({ title, rev, file }) {
   return form
 }
 
-export const login = (email, password) => request('POST', '/login', { email, password })
+export const login = (code, password) => request('POST', '/login', { code, password })
 export const logout = () => request('POST', '/logout')
+export const logoutAll = () => request('POST', '/logout-all')
 export const me = async () => (await request('GET', '/me')).data
+export const updateProfile = async (payload) => (await request('PUT', '/me', payload)).data
+export const changePassword = (payload) => request('PUT', '/me/password', payload)
 export const getOverview = async () => (await request('GET', '/overview')).data
 export const listProducts = async () => (await request('GET', '/products')).data
 export const listFaqs = async (productId) =>
@@ -127,3 +138,4 @@ export const createUser = async (payload) => (await request('POST', '/users', pa
 export const updateUser = async (id, payload) =>
   (await request('PUT', `/users/${id}`, payload)).data
 export const deleteUser = (id) => request('DELETE', `/users/${id}`)
+export const unlockUser = async (id) => (await request('POST', `/users/${id}/unlock`)).data

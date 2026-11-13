@@ -1,8 +1,8 @@
 // Akun contoh untuk MODE MOCK (tanpa backend). Menambah akun cukup menambah satu baris di bawah.
 //
-// Sembilan akun pertama (satu per role) sama dengan database/seeders/UserSeeder.php di backend:
-// email {role}@servolta.test, kata sandi "password". Dengan begitu perilaku FE dan BE mudah dibandingkan.
-// Nama tampilan di sini nama orang contoh (di seeder backend nama = label role); email dan
+// Delapan akun pertama (satu per role) sama dengan database/seeders/UserSeeder.php di backend:
+// kode {ROLE}01 (mis. CS01), kata sandi "password". Dengan begitu perilaku FE dan BE mudah dibandingkan.
+// Nama tampilan di sini nama orang contoh (di seeder backend nama = label role); kode dan
 // kata sandi yang sama, jadi login ke backend tetap memakai akun yang sama.
 // Akun bertanda "khusus mock" hanya ada di sini, untuk menguji skenario tertentu.
 
@@ -25,33 +25,42 @@ export function buildAccount({
   id,
   role,
   name = SAMPLE_NAMES[role],
-  email = `${role}@servolta.test`,
+  login_code = `${role.toUpperCase()}01`,
+  employee_id = null,
   password = DEFAULT_PASSWORD,
   is_active = true,
+  must_change_password = false,
+  failed_logins = 0,
+  locked_until = 0, // ms epoch; 0 = tidak terkunci
   note = '',
 }) {
   return {
     id,
     name,
-    email,
+    login_code,
+    employee_id,
     password,
     role,
     role_label: ROLE_LABELS[role],
     is_active,
+    must_change_password,
+    failed_logins,
+    locked_until,
     permissions: permissionsFor(role),
     note,
   }
 }
 
 export const MOCK_ACCOUNTS = [
-  ...ROLES.map((role, index) => buildAccount({ id: index + 1, role })),
+  // ID karyawan di bawah ini hanya contoh (angka), bukan data sungguhan.
+  ...ROLES.map((role, index) => buildAccount({ id: index + 1, role, employee_id: 100200 + index })),
 
   // Khusus mock: untuk menguji pesan "akun dinonaktifkan" saat login.
   buildAccount({
     id: 100,
     role: 'cs',
     name: 'Akun Nonaktif',
-    email: 'nonaktif@servolta.test',
+    login_code: 'NONAKTIF',
     is_active: false,
     note: 'Khusus mock: login harus ditolak',
   }),
@@ -59,6 +68,6 @@ export const MOCK_ACCOUNTS = [
 
 // Bentuk yang dikirim ke aplikasi: tanpa kata sandi dan tanpa catatan.
 export function toPublicUser(acc) {
-  const { password: _password, note: _note, ...user } = acc
-  return user
+  const { password: _password, note: _note, failed_logins: _f, locked_until, ...user } = acc
+  return { ...user, is_locked: locked_until > Date.now() }
 }
