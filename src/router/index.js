@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import AccountView from '../views/AccountView.vue'
 import DatasheetView from '../views/DatasheetView.vue'
 import FaqNewView from '../views/FaqNewView.vue'
 import HomeView from '../views/HomeView.vue'
@@ -48,6 +49,7 @@ const router = createRouter({
       component: UsersView,
       meta: { requiresAuth: true, perm: 'manage_users' },
     },
+    { path: '/akun', name: 'account', component: AccountView, meta: { requiresAuth: true } },
     { path: '/login', name: 'login', component: LoginView, meta: { guestOnly: true } },
     { path: '/:pathMatch(.*)*', redirect: { name: 'home' } },
   ],
@@ -59,6 +61,10 @@ router.beforeEach(async (to) => {
 
   if (to.meta.requiresAuth && !auth.isLoggedIn) {
     return { name: 'login', query: { redirect: to.fullPath } }
+  }
+  // Sandi sementara: tidak ada halaman lain yang boleh dibuka sebelum diganti.
+  if (auth.mustChangePassword && to.name !== 'account') {
+    return { name: 'account' }
   }
   // Halaman tambah data hanya untuk role yang berhak; server tetap memeriksa ulang.
   if (to.meta.perm && !auth.permissions[to.meta.perm]) {

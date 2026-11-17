@@ -9,11 +9,13 @@ export const isMock = import.meta.env.DEV && import.meta.env.VITE_USE_MOCK !== '
 export const hints = isMock
   ? {
       product: 'Contoh: SVR-1000 atau stabilizer servo',
+      code: 'Contoh: K7M2Q9XA',
       sku: 'Contoh: SVR-3000',
       skuName: 'Contoh: Stabilizer Servo 3000VA',
     }
   : {
       product: 'Ketik SKU atau nama produk',
+      code: 'Kode dari admin',
       sku: 'Contoh: BRD-0001',
       skuName: 'Contoh: Arduino Mega 2560 R3 Compatible Board',
     }

@@ -45,12 +45,9 @@ onBeforeUnmount(() => clearTimeout(timer))
 </script>
 
 <template>
-  <article :class="['card', 'faq-card', `faq-${faq.category}`]">
+  <article class="card faq-card">
     <header class="faq-head">
       <h3>{{ faq.question }}</h3>
-      <span :class="['badge', faq.category === 'ts' ? 'badge-ts' : 'badge-cs']">
-        {{ faq.category === 'ts' ? 'Technical Support' : 'Customer Service' }}
-      </span>
     </header>
 
     <p class="faq-answer">{{ faq.answer }}</p>

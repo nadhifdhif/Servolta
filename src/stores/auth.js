@@ -9,6 +9,8 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isLoggedIn = computed(() => user.value !== null)
   const permissions = computed(() => user.value?.permissions ?? {})
+  // Akun baru atau yang sandinya direset admin: hanya boleh membuka halaman Akun saya.
+  const mustChangePassword = computed(() => user.value?.must_change_password === true)
 
   // Dipanggil sekali oleh router guard: pulihkan sesi dari token yang tersimpan.
   async function init() {
@@ -24,8 +26,8 @@ export const useAuthStore = defineStore('auth', () => {
     ready.value = true
   }
 
-  async function login(email, password) {
-    const result = await api.login(email, password)
+  async function login(code, password) {
+    const result = await api.login(code, password)
     tokenStorage.set(result.token)
     user.value = result.user
   }
@@ -39,10 +41,25 @@ export const useAuthStore = defineStore('auth', () => {
     clearSession()
   }
 
+  function setUser(next) {
+    user.value = next
+  }
+
   function clearSession() {
     tokenStorage.clear()
     user.value = null
   }
 
-  return { user, ready, isLoggedIn, permissions, init, login, logout, clearSession }
+  return {
+    user,
+    ready,
+    isLoggedIn,
+    permissions,
+    mustChangePassword,
+    init,
+    login,
+    logout,
+    setUser,
+    clearSession,
+  }
 })

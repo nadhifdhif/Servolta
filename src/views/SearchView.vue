@@ -30,7 +30,6 @@ const sellingError = ref('')
 const section = ref('faq') // 'faq' | 'upsell' | 'cross'
 const loadingFaqs = ref(false)
 
-const category = ref('all')
 const faqQuery = ref('')
 
 const formMode = ref(null) // null | 'new' | objek faq yang sedang diubah
@@ -44,29 +43,14 @@ const SECTIONS = [
   { key: 'cross', label: 'Cross selling' },
 ]
 
-const TABS = [
-  { key: 'all', label: 'Semua', short: 'Semua' },
-  { key: 'cs', label: 'Customer Service', short: 'CS' },
-  { key: 'ts', label: 'Technical Support', short: 'TS' },
-]
-
 const canWrite = computed(() => auth.permissions.write_faq === true)
 const canSell = computed(() => auth.permissions.write_selling === true)
 const sellingCounts = computed(() => countByType(selling.value))
 
-const counts = computed(() => ({
-  all: faqs.value.length,
-  cs: faqs.value.filter((f) => f.category === 'cs').length,
-  ts: faqs.value.filter((f) => f.category === 'ts').length,
-}))
-
 const visibleFaqs = computed(() => {
   const q = normalize(faqQuery.value)
-  return faqs.value.filter((f) => {
-    const categoryOk = category.value === 'all' || f.category === category.value
-    const textOk = !q || normalize(`${f.question} ${f.answer}`).includes(q)
-    return categoryOk && textOk
-  })
+  if (!q) return faqs.value
+  return faqs.value.filter((f) => normalize(`${f.question} ${f.answer}`).includes(q))
 })
 
 onMounted(async () => {
@@ -85,7 +69,6 @@ onMounted(async () => {
 })
 
 watch(selected, async (product) => {
-  category.value = 'all'
   faqQuery.value = ''
   closeForm()
   faqs.value = []
@@ -249,21 +232,6 @@ async function removeFaq(faq) {
         />
 
         <div class="toolbar">
-          <div class="segmented" role="tablist" aria-label="Kategori FAQ">
-            <button
-              v-for="tab in TABS"
-              :key="tab.key"
-              type="button"
-              role="tab"
-              :aria-selected="category === tab.key"
-              :class="['seg', { active: category === tab.key }]"
-              @click="category = tab.key"
-            >
-              <span class="seg-full">{{ tab.label }}</span>
-              <span class="seg-short">{{ tab.short }}</span>
-              <span class="count">{{ counts[tab.key] }}</span>
-            </button>
-          </div>
           <div class="search-field">
             <Icon name="search" :size="16" />
             <input
@@ -284,7 +252,7 @@ async function removeFaq(faq) {
           <p>
             <strong>{{
               faqs.length
-                ? 'Tidak ada FAQ yang cocok dengan filter'
+                ? 'Tidak ada FAQ yang cocok dengan pencarian'
                 : 'Belum ada FAQ untuk produk ini'
             }}</strong>
           </p>
