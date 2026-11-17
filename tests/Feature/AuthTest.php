@@ -11,7 +11,7 @@ class AuthTest extends TestCase
 {
     use RefreshDatabase;
 
-    private function makeUser(UserRole $role = UserRole::Cs, bool $active = true): User
+    private function makeUser(UserRole $role = UserRole::Staff, bool $active = true): User
     {
         return User::factory()->create([
             'login_code' => 'TESTER01',

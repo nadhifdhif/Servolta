@@ -7,10 +7,13 @@ use PHPUnit\Framework\TestCase;
 
 class UserRoleTest extends TestCase
 {
-    public function test_there_are_eight_roles_and_no_superadmin(): void
+    public function test_there_are_four_roles(): void
     {
-        $this->assertCount(8, UserRole::cases());
-        $this->assertNull(UserRole::tryFrom('superadmin'));
+        $this->assertSame(['admin', 'spv', 'staff', 'intern'], array_map(fn (UserRole $r) => $r->value, UserRole::cases()));
+
+        foreach (['superadmin', 'ts', 'mo', 'cs', 'sales', 'konten'] as $old) {
+            $this->assertNull(UserRole::tryFrom($old), $old);
+        }
     }
 
     public function test_admin_manages_every_role(): void
@@ -20,13 +23,19 @@ class UserRoleTest extends TestCase
         }
     }
 
-    public function test_spv_manages_only_staff_below_it(): void
+    public function test_spv_manages_only_staff_and_intern(): void
     {
-        foreach ([UserRole::Ts, UserRole::Mo, UserRole::Cs, UserRole::Sales, UserRole::Konten, UserRole::Intern] as $role) {
-            $this->assertTrue(UserRole::Spv->canManage($role));
-        }
+        $this->assertTrue(UserRole::Spv->canManage(UserRole::Staff));
+        $this->assertTrue(UserRole::Spv->canManage(UserRole::Intern));
         $this->assertFalse(UserRole::Spv->canManage(UserRole::Spv));
         $this->assertFalse(UserRole::Spv->canManage(UserRole::Admin));
+    }
+
+    public function test_staff_and_intern_manage_nobody(): void
+    {
+        foreach ([UserRole::Staff, UserRole::Intern] as $role) {
+            $this->assertSame([], $role->manageableRoles(), $role->value);
+        }
     }
 
     public function test_only_admin_and_spv_manage_users(): void
@@ -55,7 +64,9 @@ class UserRoleTest extends TestCase
 
     public function test_labels(): void
     {
-        $this->assertSame('Sales and Data', UserRole::Sales->label());
-        $this->assertSame('Content and Branding', UserRole::Konten->label());
+        $this->assertSame('Admin', UserRole::Admin->label());
+        $this->assertSame('Supervisor', UserRole::Spv->label());
+        $this->assertSame('Staff', UserRole::Staff->label());
+        $this->assertSame('Intern', UserRole::Intern->label());
     }
 }

@@ -8,7 +8,7 @@ Aplikasi internal untuk membantu tim **Customer Service** dan **Technical Suppor
 - Pencarian produk berdasarkan SKU atau nama, dengan saran nama terdekat (typo-tolerant)
 - Daftar FAQ per produk, dengan tombol salin jawaban
 - CRUD Produk dan FAQ (khusus role yang berwenang)
-- Role: `admin`, `customer_service`, `technical_support`
+- Role: `admin`, `spv`, `staff`, `intern` (intern hanya melihat)
 
 ## Tech Stack
 
@@ -91,7 +91,7 @@ Atur CORS agar mengizinkan `http://localhost:5173` (`config/cors.php`).
 
 - `users`: name, email, password, role
 - `products`: sku (unik), name, description
-- `faqs`: product_id, category (`customer_service` / `technical_support`), question, answer
+- `faqs`: product_id, question, answer
 
 ## Roadmap
 

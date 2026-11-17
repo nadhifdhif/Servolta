@@ -26,8 +26,8 @@ Tanda `[!!]` berarti ada yang perlu diperbaiki sebelum lanjut. Jika skrip membua
 | Pilihan | Perintah | Hasil |
 | --- | --- | --- |
 | **A. Bersih** (disarankan untuk mulai) | `php artisan migrate:fresh` | Semua tabel dibuat ulang tanpa data. Tidak ada akun contoh. Produk dan FAQ kosong. |
-| **B. Pertahankan data** | `php artisan migrate` | Data tetap. Akun lama otomatis diberi kode (`admin@servolta.test` menjadi `ADMIN01`, dan seterusnya), `superadmin` menjadi `admin`. Sandi lama tetap `password`. |
-| **C. Demo** | `php artisan migrate:fresh --seed` | Bersih lalu diisi akun contoh (`ADMIN01`, `SPV01`, ... sandi `password`) dan produk, FAQ, saran contoh. Hanya berjalan di environment `local`. |
+| **B. Pertahankan data** | `php artisan migrate` | Data tetap. Akun lama otomatis diberi kode (`admin@servolta.test` menjadi `ADMIN01`, dan seterusnya), `superadmin` menjadi `admin`, dan peran lama (`ts`, `mo`, `cs`, `sales`, `konten`) menjadi `staff`. Sandi lama tetap `password`. |
+| **C. Demo** | `php artisan migrate:fresh --seed` | Bersih lalu diisi akun contoh (`ADMIN01`, `SPV01`, `STAFF01`, `INTERN01`, sandi `password`) dan produk, FAQ, saran contoh. Hanya berjalan di environment `local`. |
 
 `migrate:fresh` **menghapus semua data**. Jangan dipakai bila ada data yang ingin dipertahankan.
 
@@ -76,7 +76,7 @@ Jika Vite memakai port selain 5173, tambahkan alamatnya ke `CORS_ALLOWED_ORIGINS
 4. Saat masuk pertama, orang itu wajib mengganti kata sandinya.
 5. Akun terkunci (10 kali salah sandi) bisa dibuka lewat tombol **Buka kunci**.
 
-Admin dapat membuat semua role. Supervisor hanya TS, MO, CS, Sales and Data, Content and Branding, dan Intern.
+Admin dapat membuat semua role. Supervisor hanya Staff dan Intern.
 
 ## 9. Membersihkan akun contoh
 Pada pilihan B atau C ada akun contoh dengan sandi `password`. Setelah akun Anda berjalan, hapus semuanya dari halaman Pengguna. Seeder akun uji tidak pernah berjalan di produksi.

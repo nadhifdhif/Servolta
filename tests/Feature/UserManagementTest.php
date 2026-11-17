@@ -30,7 +30,7 @@ class UserManagementTest extends TestCase
         return array_merge([
             'name' => 'Orang Baru',
             'login_code' => 'BARU0001',
-            'role' => 'cs',
+            'role' => 'staff',
             'password' => 'sandi-sementara-1',
         ], $override);
     }
@@ -39,7 +39,7 @@ class UserManagementTest extends TestCase
     {
         $this->getJson('/api/users')->assertUnauthorized();
 
-        foreach ([UserRole::Ts, UserRole::Mo, UserRole::Cs, UserRole::Sales, UserRole::Konten, UserRole::Intern] as $role) {
+        foreach ([UserRole::Staff, UserRole::Intern] as $role) {
             $this->actAs($role);
             $this->getJson('/api/users')->assertForbidden()->assertJsonPath('message', 'Role Anda tidak boleh mengelola pengguna.');
             $this->postJson('/api/users', $this->payload())->assertForbidden();
@@ -51,13 +51,13 @@ class UserManagementTest extends TestCase
     {
         $admin = $this->make(UserRole::Admin);
         $spv = $this->make(UserRole::Spv);
-        $cs = $this->make(UserRole::Cs);
+        $staff = $this->make(UserRole::Staff);
         $intern = $this->make(UserRole::Intern);
 
         $this->actingAs($admin, 'sanctum')->getJson('/api/users')->assertOk()->assertJsonCount(4, 'data');
 
         $ids = $this->actingAs($spv, 'sanctum')->getJson('/api/users')->assertOk()->json('data.*.id');
-        $this->assertEqualsCanonicalizing([$cs->id, $intern->id], $ids);
+        $this->assertEqualsCanonicalizing([$staff->id, $intern->id], $ids);
     }
 
     public function test_listing_never_exposes_passwords_or_email(): void
@@ -74,7 +74,7 @@ class UserManagementTest extends TestCase
     {
         $this->actAs(UserRole::Admin);
 
-        foreach (['admin', 'spv', 'ts', 'mo', 'cs', 'sales', 'konten', 'intern'] as $i => $role) {
+        foreach (['admin', 'spv', 'staff', 'intern'] as $i => $role) {
             $this->postJson('/api/users', $this->payload(['role' => $role, 'login_code' => "KODE000{$i}"]))
                 ->assertCreated()
                 ->assertJsonPath('data.role', $role);
@@ -90,7 +90,7 @@ class UserManagementTest extends TestCase
                 ->assertStatus(422)
                 ->assertJsonValidationErrors('role');
         }
-        $this->postJson('/api/users', $this->payload(['role' => 'konten']))->assertCreated();
+        $this->postJson('/api/users', $this->payload(['role' => 'staff']))->assertCreated();
     }
 
     public function test_new_accounts_must_change_the_temporary_password(): void
@@ -163,22 +163,22 @@ class UserManagementTest extends TestCase
 
         $this->postJson('/api/login', ['code' => 'baru0001', 'password' => 'sandi-sementara-1'])
             ->assertOk()
-            ->assertJsonPath('user.role', 'cs');
+            ->assertJsonPath('user.role', 'staff');
     }
 
     public function test_update_within_limits(): void
     {
         $this->actAs(UserRole::Spv);
-        $cs = $this->make(UserRole::Cs, ['login_code' => 'STAF0001']);
-        $base = ['name' => 'Nama Baru', 'login_code' => 'STAF0001', 'role' => 'ts', 'password' => null];
+        $staff = $this->make(UserRole::Staff, ['login_code' => 'STAF0001']);
+        $base = ['name' => 'Nama Baru', 'login_code' => 'STAF0001', 'role' => 'intern', 'password' => null];
 
-        $this->putJson("/api/users/{$cs->id}", $base)
+        $this->putJson("/api/users/{$staff->id}", $base)
             ->assertOk()
             ->assertJsonPath('data.name', 'Nama Baru')
-            ->assertJsonPath('data.role', 'ts');
+            ->assertJsonPath('data.role', 'intern');
 
         // spv tidak boleh menaikkan staf menjadi spv
-        $this->putJson("/api/users/{$cs->id}", array_merge($base, ['role' => 'spv']))
+        $this->putJson("/api/users/{$staff->id}", array_merge($base, ['role' => 'spv']))
             ->assertStatus(422)
             ->assertJsonValidationErrors('role');
     }
@@ -209,8 +209,8 @@ class UserManagementTest extends TestCase
     public function test_security_relevant_changes_revoke_tokens_and_a_password_reset_forces_a_new_one(): void
     {
         $this->actAs(UserRole::Admin);
-        $target = $this->make(UserRole::Cs, ['login_code' => 'STAF0002']);
-        $base = ['name' => $target->name, 'login_code' => 'STAF0002', 'role' => 'cs', 'password' => null];
+        $target = $this->make(UserRole::Staff, ['login_code' => 'STAF0002']);
+        $base = ['name' => $target->name, 'login_code' => 'STAF0002', 'role' => 'staff', 'password' => null];
 
         $target->createToken('web');
         $this->putJson("/api/users/{$target->id}", $base + ['is_active' => true])->assertOk();
@@ -222,15 +222,15 @@ class UserManagementTest extends TestCase
         $this->assertTrue($target->fresh()->must_change_password, 'reset oleh admin: wajib diganti saat masuk berikutnya');
 
         $target->createToken('web');
-        $this->putJson("/api/users/{$target->id}", ['role' => 'ts'] + $base)->assertOk();
+        $this->putJson("/api/users/{$target->id}", ['role' => 'intern'] + $base)->assertOk();
         $this->assertSame(0, $target->tokens()->count());
 
         $target->createToken('web');
-        $this->putJson("/api/users/{$target->id}", ['login_code' => 'STAF0099', 'role' => 'ts'] + $base)->assertOk();
+        $this->putJson("/api/users/{$target->id}", ['login_code' => 'STAF0099', 'role' => 'intern'] + $base)->assertOk();
         $this->assertSame(0, $target->tokens()->count(), 'ganti kode mencabut sesi lama');
 
         $target->createToken('web');
-        $this->putJson("/api/users/{$target->id}", ['login_code' => 'STAF0099', 'role' => 'ts', 'is_active' => false] + $base)->assertOk();
+        $this->putJson("/api/users/{$target->id}", ['login_code' => 'STAF0099', 'role' => 'intern', 'is_active' => false] + $base)->assertOk();
         $this->assertSame(0, $target->tokens()->count());
         $this->assertFalse($target->fresh()->is_active);
     }
@@ -238,7 +238,7 @@ class UserManagementTest extends TestCase
     public function test_unlock_clears_a_lockout(): void
     {
         $this->actAs(UserRole::Spv);
-        $locked = $this->make(UserRole::Cs, ['failed_logins' => 4, 'locked_until' => now()->addMinutes(10)]);
+        $locked = $this->make(UserRole::Staff, ['failed_logins' => 4, 'locked_until' => now()->addMinutes(10)]);
 
         $this->getJson('/api/users')->assertOk()->assertJsonPath('data.0.is_locked', true);
 
@@ -267,8 +267,8 @@ class UserManagementTest extends TestCase
     public function test_code_must_stay_unique_on_update(): void
     {
         $this->actAs(UserRole::Admin);
-        $a = $this->make(UserRole::Cs, ['login_code' => 'KODEAAAA']);
-        $this->make(UserRole::Cs, ['login_code' => 'KODEBBBB']);
+        $a = $this->make(UserRole::Staff, ['login_code' => 'KODEAAAA']);
+        $this->make(UserRole::Staff, ['login_code' => 'KODEBBBB']);
 
         $this->putJson("/api/users/{$a->id}", $this->payload(['login_code' => 'KODEBBBB', 'password' => null]))
             ->assertStatus(422)
@@ -278,8 +278,8 @@ class UserManagementTest extends TestCase
     public function test_me_exposes_permissions_for_the_role_matrix(): void
     {
         $expect = [
-            'admin' => [true, true, true], 'spv' => [true, true, false], 'ts' => [false, true, false], 'mo' => [false, true, false],
-            'cs' => [false, true, false], 'sales' => [false, true, false], 'konten' => [false, true, false], 'intern' => [false, false, false],
+            'admin' => [true, true, true], 'spv' => [true, true, false],
+            'staff' => [false, true, false], 'intern' => [false, false, false],
         ];
         foreach ($expect as $role => [$manage, $write, $logs]) {
             $this->actAs(UserRole::from($role));

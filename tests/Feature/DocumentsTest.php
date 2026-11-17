@@ -66,7 +66,7 @@ class DocumentsTest extends TestCase
             'title' => 'Foto', 'file' => UploadedFile::fake()->image('a.jpg', 100, 100),
         ])->json('data.id');
 
-        $this->actAs(UserRole::Cs)->get("/api/wiring/{$id}/file")
+        $this->actAs(UserRole::Staff)->get("/api/wiring/{$id}/file")
             ->assertOk()
             ->assertHeader('Content-Type', 'image/jpeg')
             ->assertHeader('X-Content-Type-Options', 'nosniff');

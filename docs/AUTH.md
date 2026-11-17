@@ -62,7 +62,7 @@ Di server, jalankan scheduler dengan cron: `* * * * * cd /path/ke/servolta && ph
 php artisan servolta:create-admin                       # kode dibuat acak dan ditampilkan; sandi ditanyakan
 php artisan servolta:create-admin KODE0001 --name="Nama Admin" --employee-id=12345
 ```
-Bila kode sudah ada, akun itu dijadikan Admin, diaktifkan, dan dibuka kuncinya. Seeder akun uji (`UserSeeder`, kode `ADMIN01`, `SPV01`, `TS01`, `MO01`, `CS01`, `SALES01`, `KONTEN01`, `INTERN01`, sandi `password`) hanya berjalan di environment `local` dan `testing`.
+Bila kode sudah ada, akun itu dijadikan Admin, diaktifkan, dan dibuka kuncinya. Seeder akun uji (`UserSeeder`, kode `ADMIN01`, `SPV01`, `STAFF01`, `INTERN01`, sandi `password`) hanya berjalan di environment `local` dan `testing`.
 
 ## Mengamankan server yang terbuka di internet
 - **HTTPS wajib.** Tanpa itu kode dan sandi lewat jaringan polos.

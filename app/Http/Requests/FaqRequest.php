@@ -18,7 +18,6 @@ class FaqRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'category' => ['required', 'in:cs,ts'],
             'question' => ['required', 'string', 'max:500'],
             'answer' => ['required', 'string', 'max:5000'],
         ];
@@ -30,8 +29,6 @@ class FaqRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'category.required' => 'Kategori wajib dipilih.',
-            'category.in' => 'Kategori tidak valid.',
             'question.required' => 'Pertanyaan wajib diisi.',
             'answer.required' => 'Jawaban wajib diisi.',
         ];

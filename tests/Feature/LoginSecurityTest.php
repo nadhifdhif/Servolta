@@ -15,7 +15,7 @@ class LoginSecurityTest extends TestCase
     private function user(array $override = []): User
     {
         return User::factory()->create(array_merge([
-            'login_code' => 'AKUN0001', 'password' => 'sandi-benar-123', 'role' => UserRole::Cs,
+            'login_code' => 'AKUN0001', 'password' => 'sandi-benar-123', 'role' => UserRole::Staff,
         ], $override));
     }
 

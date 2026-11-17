@@ -16,7 +16,6 @@ class FaqResource extends JsonResource
         return [
             'id' => $this->id,
             'product_id' => $this->product_id,
-            'category' => $this->category,
             'question' => $this->question,
             'answer' => $this->answer,
             'updated_at' => $this->updated_at?->toIso8601String(),
