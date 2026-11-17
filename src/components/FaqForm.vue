@@ -11,13 +11,12 @@ const props = defineProps({
 const emit = defineEmits(['save', 'cancel'])
 
 const form = reactive({
-  category: props.initial?.category ?? 'cs',
   question: props.initial?.question ?? '',
   answer: props.initial?.answer ?? '',
 })
 
 function submit() {
-  emit('save', { category: form.category, question: form.question, answer: form.answer })
+  emit('save', { question: form.question, answer: form.answer })
 }
 </script>
 
@@ -33,15 +32,6 @@ function submit() {
     <p v-if="message" class="alert alert-error" role="alert">
       <Icon name="info" :size="16" /> {{ message }}
     </p>
-
-    <div class="field">
-      <label class="label" for="faq-category">Kategori</label>
-      <select id="faq-category" v-model="form.category" class="input">
-        <option value="cs">Customer Service</option>
-        <option value="ts">Technical Support</option>
-      </select>
-      <p v-if="errors.category" class="field-error">{{ errors.category[0] }}</p>
-    </div>
 
     <div class="field">
       <label class="label" for="faq-question">Pertanyaan</label>

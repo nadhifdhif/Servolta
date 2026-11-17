@@ -1,7 +1,7 @@
 // Klien untuk backend Laravel. Endpoint auth (/login, /logout, /me) sudah ada.
 // Endpoint produk & FAQ adalah KONTRAK RENCANA, dibuat di langkah backend berikutnya:
 //   GET    /products                  -> { data: [{ id, sku, name }] }
-//   GET    /products/{id}/faqs        -> { data: [{ id, product_id, category, question, answer, updated_at }] }
+//   GET    /products/{id}/faqs        -> { data: [{ id, product_id, question, answer, updated_at }] }
 //   POST   /products/{id}/faqs        -> { data: faq }
 //   PUT    /faqs/{id}                 -> { data: faq }
 //   DELETE /faqs/{id}                 -> 204

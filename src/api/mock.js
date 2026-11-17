@@ -27,7 +27,8 @@ export function setMockDelay(ms) {
 function loadFaqs() {
   try {
     const raw = localStorage.getItem(FAQ_KEY)
-    if (raw) return JSON.parse(raw)
+    // Data lama di browser masih membawa kategori; FAQ kini tidak punya kategori, jadi dibuang.
+    if (raw) return JSON.parse(raw).map(({ category: _category, ...faq }) => faq)
   } catch {
     /* abaikan */
   }
@@ -108,7 +109,6 @@ function requireFaqWrite() {
 
 function validateFaq(payload) {
   const errors = {}
-  if (!['cs', 'ts'].includes(payload.category)) errors.category = ['Kategori tidak valid.']
   if (!payload.question?.trim()) errors.question = ['Pertanyaan wajib diisi.']
   if (!payload.answer?.trim()) errors.answer = ['Jawaban wajib diisi.']
   if (Object.keys(errors).length) throw new ApiError('Data tidak valid.', 422, errors)
@@ -337,7 +337,6 @@ export async function createFaq(productId, payload) {
   const created = {
     id: Math.max(0, ...faqs.map((f) => f.id)) + 1,
     product_id: productId,
-    category: payload.category,
     question: payload.question.trim(),
     answer: payload.answer.trim(),
     updated_at: new Date().toISOString(),
@@ -355,7 +354,6 @@ export async function updateFaq(id, payload) {
   if (index === -1) throw new ApiError('FAQ tidak ditemukan.', 404)
   const updated = {
     ...faqs[index],
-    category: payload.category,
     question: payload.question.trim(),
     answer: payload.answer.trim(),
     updated_at: new Date().toISOString(),

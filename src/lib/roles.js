@@ -1,23 +1,19 @@
-// Cermin dari app/Enums/UserRole.php di backend (delapan role, tanpa superadmin). Di mode asli, FE memakai
+// Cermin dari app/Enums/UserRole.php di backend (empat role: admin, spv, staff, intern). Di mode asli, FE memakai
 // `user.permissions` dari /api/me; file ini dipakai oleh mode mock.
 
 export const ROLE_LABELS = {
   admin: 'Admin',
   spv: 'Supervisor',
-  ts: 'Technical Support',
-  mo: 'Marketing Officer',
-  cs: 'Customer Service',
-  sales: 'Sales and Data',
-  konten: 'Content and Branding',
+  staff: 'Staff',
   intern: 'Intern',
 }
 
 export const ROLES = Object.keys(ROLE_LABELS)
 
-// Admin mengelola semua role; Supervisor hanya staf di bawahnya.
+// Admin mengelola semua role; Supervisor hanya Staff dan Intern.
 export function manageableRoles(role) {
   if (role === 'admin') return [...ROLES]
-  if (role === 'spv') return ['ts', 'mo', 'cs', 'sales', 'konten', 'intern']
+  if (role === 'spv') return ['staff', 'intern']
   return []
 }
 

@@ -2,22 +2,33 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { ROLES, ROLE_LABELS, buildUser, manageableRoles, permissionsFor } from './roles.js'
 
-test('ada 8 role dan tidak ada superadmin', () => {
-  assert.equal(ROLES.length, 8)
-  assert.ok(!ROLES.includes('superadmin'))
+test('ada 4 role: admin, spv, staff, intern', () => {
+  assert.deepEqual(ROLES, ['admin', 'spv', 'staff', 'intern'])
+  for (const old of ['superadmin', 'ts', 'mo', 'cs', 'sales', 'konten']) {
+    assert.ok(!ROLES.includes(old), old)
+  }
 })
 
 test('label tampilan', () => {
-  assert.equal(ROLE_LABELS.sales, 'Sales and Data')
-  assert.equal(ROLE_LABELS.konten, 'Content and Branding')
+  assert.deepEqual(ROLE_LABELS, {
+    admin: 'Admin',
+    spv: 'Supervisor',
+    staff: 'Staff',
+    intern: 'Intern',
+  })
 })
 
 test('admin mengelola semua role', () => {
   assert.deepEqual(manageableRoles('admin'), ROLES)
 })
 
-test('spv hanya mengelola staf di bawahnya', () => {
-  assert.deepEqual(manageableRoles('spv'), ['ts', 'mo', 'cs', 'sales', 'konten', 'intern'])
+test('spv hanya mengelola staff dan intern', () => {
+  assert.deepEqual(manageableRoles('spv'), ['staff', 'intern'])
+})
+
+test('staff dan intern tidak mengelola siapa pun', () => {
+  assert.deepEqual(manageableRoles('staff'), [])
+  assert.deepEqual(manageableRoles('intern'), [])
 })
 
 test('hanya admin dan spv yang bisa mengelola pengguna', () => {
@@ -37,9 +48,9 @@ test('semua role selain intern bisa menulis FAQ, saran, SKU, wiring, dan datashe
 })
 
 test('buildUser membentuk objek seperti UserResource backend', () => {
-  const user = buildUser({ id: 4, role: 'cs' })
-  assert.equal(user.login_code, 'CS01')
+  const user = buildUser({ id: 4, role: 'staff' })
+  assert.equal(user.login_code, 'STAFF01')
   assert.ok(!('email' in user))
-  assert.equal(user.role_label, 'Customer Service')
+  assert.equal(user.role_label, 'Staff')
   assert.ok('permissions' in user)
 })

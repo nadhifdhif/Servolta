@@ -2,7 +2,12 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { validatePasswordChange, validateUser } from './users.js'
 
-const ok = { name: 'Orang Baru', login_code: 'K7M2Q9XA', role: 'cs', password: 'sandi-sementara-1' }
+const ok = {
+  name: 'Orang Baru',
+  login_code: 'K7M2Q9XA',
+  role: 'staff',
+  password: 'sandi-sementara-1',
+}
 
 test('data sah', () => {
   assert.deepEqual(validateUser(ok, { actorRole: 'spv' }), {})
@@ -44,7 +49,7 @@ test('supervisor tidak boleh memberi role spv atau admin; admin boleh semua', ()
     assert.ok(validateUser({ ...ok, role }, { actorRole: 'spv' }).role, role)
     assert.deepEqual(validateUser({ ...ok, role }, { actorRole: 'admin' }), {})
   }
-  assert.deepEqual(validateUser({ ...ok, role: 'konten' }, { actorRole: 'spv' }), {})
+  assert.deepEqual(validateUser({ ...ok, role: 'intern' }, { actorRole: 'spv' }), {})
   assert.ok(validateUser({ ...ok, role: '' }, { actorRole: 'spv' }).role)
   assert.ok(validateUser({ ...ok, role: 'superadmin' }, { actorRole: 'admin' }).role)
 })

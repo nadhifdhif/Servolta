@@ -48,12 +48,12 @@ test('login berhasil mengembalikan token dan user tanpa kata sandi', async () =>
 })
 
 test('kode tidak peka huruf besar/kecil dan spasi', async () => {
-  const result = await mock.login('  cs01 ', 'password')
-  assert.equal(result.user.role, 'cs')
+  const result = await mock.login('  staff01 ', 'password')
+  assert.equal(result.user.role, 'staff')
 })
 
 test('kata sandi salah dan kode tak terdaftar menghasilkan pesan yang sama', async () => {
-  const wrong = await mock.login('CS01', 'salah').catch((e) => e)
+  const wrong = await mock.login('STAFF01', 'salah').catch((e) => e)
   const unknown = await mock.login('TIDAKADA', 'salah').catch((e) => e)
   assert.equal(wrong.status, 422)
   assert.equal(wrong.message, unknown.message)
@@ -73,19 +73,20 @@ test('me() tanpa token ditolak dengan 401', async () => {
 })
 
 test('me() dengan token mengembalikan user yang login', async () => {
-  await loginAs('TS01')
-  assert.equal((await mock.me()).role, 'ts')
+  await loginAs('SPV01')
+  assert.equal((await mock.me()).role, 'spv')
 })
 
-test('intern tidak boleh menulis FAQ (403), cs boleh', async () => {
-  const payload = { category: 'cs', question: 'Tes?', answer: 'Ya.' }
+test('intern tidak boleh menulis FAQ (403), staff boleh', async () => {
+  const payload = { question: 'Tes?', answer: 'Ya.' }
 
   await loginAs('INTERN01')
   await rejects(mock.createFaq(1, payload), 403)
 
-  await loginAs('CS01')
+  await loginAs('STAFF01')
   const created = await mock.createFaq(1, payload)
   assert.equal(created.product_id, 1)
+  assert.ok(!('category' in created), 'FAQ tidak punya kategori')
   assert.ok((await mock.listFaqs(1)).some((f) => f.id === created.id))
 
   const updated = await mock.updateFaq(created.id, { ...payload, answer: 'Sudah diubah.' })
@@ -96,9 +97,9 @@ test('intern tidak boleh menulis FAQ (403), cs boleh', async () => {
 })
 
 test('validasi FAQ: pertanyaan/jawaban kosong ditolak dengan 422', async () => {
-  await loginAs('CS01')
+  await loginAs('STAFF01')
   await assert.rejects(
-    mock.createFaq(1, { category: 'cs', question: ' ', answer: '' }),
+    mock.createFaq(1, { question: ' ', answer: '' }),
     (error) => error.status === 422 && 'question' in error.errors && 'answer' in error.errors,
   )
 })
@@ -106,12 +107,12 @@ test('validasi FAQ: pertanyaan/jawaban kosong ditolak dengan 422', async () => {
 test('daftar produk butuh login', async () => {
   tokenStorage.clear()
   await rejects(mock.listProducts(), 401)
-  await loginAs('CS01')
+  await loginAs('STAFF01')
   assert.ok((await mock.listProducts()).length > 0)
 })
 
 test('ringkasan beranda: jumlah FAQ dan produk', async () => {
-  await loginAs('CS01')
+  await loginAs('STAFF01')
   const overview = await mock.getOverview()
   assert.ok(overview.faq > 0)
   assert.equal(overview.products, (await mock.listProducts()).length)
@@ -177,7 +178,7 @@ test('unggah datasheet: hanya PDF, dan bisa diunduh kembali', async () => {
 })
 
 test('datasheet contoh diunduh sebagai PDF', async () => {
-  await loginAs('CS01')
+  await loginAs('STAFF01')
   const [doc] = (await mock.getDatasheet(1)).documents
   const blob = await mock.downloadDatasheet(doc.id)
   assert.equal(blob.type, 'application/pdf')
@@ -185,7 +186,7 @@ test('datasheet contoh diunduh sebagai PDF', async () => {
 })
 
 test('ringkasan beranda menghitung wiring dan datasheet', async () => {
-  await loginAs('CS01')
+  await loginAs('STAFF01')
   mock.resetMock()
   const o = await mock.getOverview()
   assert.equal(o.wiring, 11)
@@ -239,8 +240,8 @@ test('upselling & cross selling: semua role bisa lihat, intern tidak bisa tulis'
   await rejects(mock.deleteSelling(1), 403)
 })
 
-test('upselling & cross selling: CS sampai role teratas bisa menambah, mengubah, menghapus', async () => {
-  for (const role of ['cs', 'ts', 'mo', 'sales', 'konten', 'spv', 'admin']) {
+test('upselling & cross selling: staff sampai role teratas bisa menambah, mengubah, menghapus', async () => {
+  for (const role of ['staff', 'spv', 'admin']) {
     mock.resetMock()
     await loginAs(`${role.toUpperCase()}01`)
     const created = await mock.createSelling(2, {
@@ -264,7 +265,7 @@ test('upselling & cross selling: CS sampai role teratas bisa menambah, mengubah,
 
 test('upselling & cross selling: validasi dan duplikat', async () => {
   mock.resetMock()
-  await loginAs('CS01')
+  await loginAs('STAFF01')
   await rejects(mock.createSelling(1, { type: 'upsell', target_id: 1, pitch: 'x' }), 422) // diri sendiri
   await rejects(mock.createSelling(1, { type: 'upsell', target_id: 999, pitch: 'x' }), 422)
   await rejects(mock.createSelling(1, { type: 'upsell', target_id: 4, pitch: ' ' }), 422)
@@ -294,14 +295,14 @@ test('produk baru punya daftar selling kosong dan bisa dipilih sebagai tujuan', 
 const newUser = (extra = {}) => ({
   name: 'Orang Baru',
   login_code: 'BARU0001',
-  role: 'cs',
+  role: 'staff',
   password: 'sandi-sementara-1',
   ...extra,
 })
 
 test('pengguna: hanya admin dan spv yang bisa mengelola', async () => {
   mock.resetMock()
-  for (const role of ['ts', 'mo', 'cs', 'sales', 'konten', 'intern']) {
+  for (const role of ['staff', 'intern']) {
     await loginAs(`${role.toUpperCase()}01`)
     await rejects(mock.listUsers(), 403)
     await rejects(mock.createUser(newUser()), 403)
@@ -327,7 +328,7 @@ test('pengguna: akun baru berkode, sandi sementara wajib diganti, lalu bisa dipa
   await loginAs('SPV01')
   await rejects(mock.createUser(newUser({ role: 'spv' })), 422)
   await rejects(mock.createUser(newUser({ role: 'admin' })), 422)
-  await rejects(mock.createUser(newUser({ login_code: 'CS01' })), 422) // kode kembar
+  await rejects(mock.createUser(newUser({ login_code: 'STAFF01' })), 422) // kode kembar
   await rejects(mock.createUser(newUser({ login_code: 'ab' })), 422)
   await rejects(mock.createUser(newUser({ password: 'pendek123' })), 422) // kurang dari 10
   await rejects(mock.createUser(newUser({ employee_id: 'abc' })), 422)
@@ -337,7 +338,7 @@ test('pengguna: akun baru berkode, sandi sementara wajib diganti, lalu bisa dipa
   assert.equal(created.login_code, 'BARU0001')
   assert.equal(created.employee_id, 7788)
   assert.equal(created.must_change_password, true)
-  assert.equal(created.role_label, 'Customer Service')
+  assert.equal(created.role_label, 'Staff')
   assert.ok(!('password' in created))
 
   // kode kosong -> dibuat acak oleh server
@@ -443,7 +444,7 @@ test('pengguna: batas supervisor, akun sendiri, kode dan ID karyawan unik saat u
   mock.resetMock()
   const me = await loginAs('SPV01')
   const adminId = MOCK_ACCOUNTS.find((a) => a.role === 'admin').id
-  const cs = MOCK_ACCOUNTS.find((a) => a.login_code === 'CS01')
+  const staffAcc = MOCK_ACCOUNTS.find((a) => a.login_code === 'STAFF01')
   const body = (a, extra = {}) => ({
     name: a.name,
     login_code: a.login_code,
@@ -452,21 +453,23 @@ test('pengguna: batas supervisor, akun sendiri, kode dan ID karyawan unik saat u
     ...extra,
   })
 
-  await rejects(mock.updateUser(adminId, { name: 'x', login_code: 'ZZZZ', role: 'cs' }), 403)
+  await rejects(mock.updateUser(adminId, { name: 'x', login_code: 'ZZZZ', role: 'staff' }), 403)
   await rejects(mock.deleteUser(adminId), 403)
   await rejects(mock.unlockUser(adminId), 403)
   await rejects(mock.updateUser(me.user.id, body(me.user)), 403) // akun sendiri
   await rejects(mock.deleteUser(me.user.id), 403)
-  await rejects(mock.updateUser(cs.id, body(cs, { role: 'spv' })), 422)
-  await rejects(mock.updateUser(cs.id, body(cs, { login_code: 'TS01' })), 422) // kode milik akun lain
+  await rejects(mock.updateUser(staffAcc.id, body(staffAcc, { role: 'spv' })), 422)
+  await rejects(mock.updateUser(staffAcc.id, body(staffAcc, { login_code: 'SPV01' })), 422) // kode milik akun lain
   await rejects(
     mock.updateUser(
-      cs.id,
-      body(cs, { employee_id: MOCK_ACCOUNTS.find((a) => a.login_code === 'TS01').employee_id }),
+      staffAcc.id,
+      body(staffAcc, {
+        employee_id: MOCK_ACCOUNTS.find((a) => a.login_code === 'SPV01').employee_id,
+      }),
     ),
     422,
   )
-  await mock.updateUser(cs.id, body(cs, { name: 'Nama Baru' })) // kode dan ID sendiri tidak dianggap kembar
+  await mock.updateUser(staffAcc.id, body(staffAcc, { name: 'Nama Baru' })) // kode dan ID sendiri tidak dianggap kembar
 
   await loginAs('ADMIN01')
   await mock.updateUser(MOCK_ACCOUNTS.find((a) => a.role === 'spv').id, {
@@ -478,34 +481,34 @@ test('pengguna: batas supervisor, akun sendiri, kode dan ID karyawan unik saat u
 
 test('penguncian: 10 kali salah sandi mengunci akun, admin bisa membuka kuncinya', async () => {
   mock.resetMock()
-  for (let i = 0; i < 10; i++) await rejects(mock.login('CS01', 'salah'), 422)
+  for (let i = 0; i < 10; i++) await rejects(mock.login('STAFF01', 'salah'), 422)
 
   // terkunci: sandi benar pun ditolak dengan pesan yang sama
-  const locked = await mock.login('CS01', 'password').catch((e) => e)
-  const wrong = await mock.login('CS01', 'salah').catch((e) => e)
+  const locked = await mock.login('STAFF01', 'password').catch((e) => e)
+  const wrong = await mock.login('STAFF01', 'salah').catch((e) => e)
   assert.equal(locked.status, 422)
   assert.equal(locked.message, wrong.message)
 
   await loginAs('SPV01')
-  const row = (await mock.listUsers()).find((u) => u.login_code === 'CS01')
+  const row = (await mock.listUsers()).find((u) => u.login_code === 'STAFF01')
   assert.equal(row.is_locked, true)
 
   const unlocked = await mock.unlockUser(row.id)
   assert.equal(unlocked.is_locked, false)
-  await mock.login('CS01', 'password')
+  await mock.login('STAFF01', 'password')
 })
 
 test('penguncian: login berhasil mengembalikan hitungan gagal ke nol', async () => {
   mock.resetMock()
-  for (let i = 0; i < 9; i++) await rejects(mock.login('TS01', 'salah'), 422)
-  await mock.login('TS01', 'password') // berhasil sebelum mencapai batas
-  for (let i = 0; i < 9; i++) await rejects(mock.login('TS01', 'salah'), 422)
-  await mock.login('TS01', 'password') // masih belum terkunci
+  for (let i = 0; i < 9; i++) await rejects(mock.login('SPV01', 'salah'), 422)
+  await mock.login('SPV01', 'password') // berhasil sebelum mencapai batas
+  for (let i = 0; i < 9; i++) await rejects(mock.login('SPV01', 'salah'), 422)
+  await mock.login('SPV01', 'password') // masih belum terkunci
 })
 
 test('akun sendiri: ubah nama dan keluar dari semua perangkat', async () => {
   mock.resetMock()
-  await loginAs('CS01')
+  await loginAs('STAFF01')
   assert.equal((await mock.updateProfile({ name: '  Nama Baru ' })).name, 'Nama Baru')
   await rejects(mock.updateProfile({ name: ' ' }), 422)
   await mock.logoutAll()

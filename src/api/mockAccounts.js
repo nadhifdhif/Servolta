@@ -1,7 +1,7 @@
 // Akun contoh untuk MODE MOCK (tanpa backend). Menambah akun cukup menambah satu baris di bawah.
 //
-// Delapan akun pertama (satu per role) sama dengan database/seeders/UserSeeder.php di backend:
-// kode {ROLE}01 (mis. CS01), kata sandi "password". Dengan begitu perilaku FE dan BE mudah dibandingkan.
+// Empat akun pertama (satu per role) sama dengan database/seeders/UserSeeder.php di backend:
+// kode {ROLE}01 (mis. STAFF01), kata sandi "password". Dengan begitu perilaku FE dan BE mudah dibandingkan.
 // Nama tampilan di sini nama orang contoh (di seeder backend nama = label role); kode dan
 // kata sandi yang sama, jadi login ke backend tetap memakai akun yang sama.
 // Akun bertanda "khusus mock" hanya ada di sini, untuk menguji skenario tertentu.
@@ -13,11 +13,7 @@ const DEFAULT_PASSWORD = 'password'
 const SAMPLE_NAMES = {
   admin: 'Dewi Lestari',
   spv: 'Bagas Saputra',
-  cs: 'Citra Maharani',
-  ts: 'Taufik Hidayat',
-  mo: 'Maya Anggraini',
-  sales: 'Salsa Wulandari',
-  konten: 'Kevin Aditya',
+  staff: 'Citra Maharani',
   intern: 'Intan Permata',
 }
 
@@ -58,7 +54,7 @@ export const MOCK_ACCOUNTS = [
   // Khusus mock: untuk menguji pesan "akun dinonaktifkan" saat login.
   buildAccount({
     id: 100,
-    role: 'cs',
+    role: 'staff',
     name: 'Akun Nonaktif',
     login_code: 'NONAKTIF',
     is_active: false,
