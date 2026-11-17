@@ -17,7 +17,7 @@ class AuthHardeningTest extends TestCase
         return User::factory()->create(array_merge([
             'login_code' => 'STAF0001',
             'password' => 'sandi-lama-123',
-            'role' => UserRole::Cs,
+            'role' => UserRole::Staff,
             'is_active' => true,
         ], $override));
     }
@@ -117,12 +117,12 @@ class AuthHardeningTest extends TestCase
 
         $this->withToken($plain)->putJson('/api/me', [
             'name' => 'Nama Baru', 'role' => 'admin', 'login_code' => 'BARU0001', 'employee_id' => 99, 'is_active' => false,
-        ])->assertOk()->assertJsonPath('data.name', 'Nama Baru')->assertJsonPath('data.role', 'cs');
+        ])->assertOk()->assertJsonPath('data.name', 'Nama Baru')->assertJsonPath('data.role', 'staff');
 
         $fresh = $user->fresh();
         $this->assertSame('STAF0001', $fresh->login_code);
         $this->assertNull($fresh->employee_id);
-        $this->assertSame(UserRole::Cs, $fresh->role);
+        $this->assertSame(UserRole::Staff, $fresh->role);
         $this->assertTrue($fresh->is_active);
 
         $this->putJson('/api/me', ['name' => ''])->assertStatus(422)->assertJsonValidationErrors('name');

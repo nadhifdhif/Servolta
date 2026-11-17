@@ -43,7 +43,7 @@ class ProductTest extends TestCase
             ->assertJsonPath('message', 'Role Anda tidak boleh mengelola produk dan dokumen.');
         $this->assertDatabaseCount('products', 0);
 
-        $writers = [UserRole::Admin, UserRole::Spv, UserRole::Ts, UserRole::Mo, UserRole::Cs, UserRole::Sales, UserRole::Konten];
+        $writers = [UserRole::Admin, UserRole::Spv, UserRole::Staff];
         foreach ($writers as $i => $role) {
             $this->actAs($role)->postJson('/api/products', ['sku' => "SKU-{$i}", 'name' => 'Produk'])->assertCreated();
         }
@@ -86,7 +86,7 @@ class ProductTest extends TestCase
     public function test_delete_product_cascades_to_faqs(): void
     {
         $p = Product::query()->create(['sku' => 'A-1', 'name' => 'Satu']);
-        $p->faqs()->create(['category' => 'cs', 'question' => 'Q', 'answer' => 'A']);
+        $p->faqs()->create(['question' => 'Q', 'answer' => 'A']);
 
         $this->actAs(UserRole::Intern)->deleteJson("/api/products/{$p->id}")->assertForbidden();
 
@@ -119,7 +119,7 @@ class ProductTest extends TestCase
     public function test_overview_counts_everything(): void
     {
         $p = Product::query()->create(['sku' => 'A-1', 'name' => 'Satu']);
-        $p->faqs()->create(['category' => 'ts', 'question' => 'Q', 'answer' => 'A']);
+        $p->faqs()->create(['question' => 'Q', 'answer' => 'A']);
 
         $this->actAs(UserRole::Intern)->getJson('/api/overview')
             ->assertOk()

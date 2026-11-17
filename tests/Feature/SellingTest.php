@@ -77,7 +77,7 @@ class SellingTest extends TestCase
             ->assertJsonPath('message', 'Role Anda tidak boleh mengubah upselling dan cross selling.');
         $this->assertDatabaseCount('selling_suggestions', 0);
 
-        $writers = [UserRole::Cs, UserRole::Ts, UserRole::Mo, UserRole::Sales, UserRole::Konten, UserRole::Spv, UserRole::Admin];
+        $writers = [UserRole::Staff, UserRole::Spv, UserRole::Admin];
         foreach ($writers as $i => $role) {
             $target = Product::query()->create(['sku' => "TARGET-{$i}", 'name' => "Tujuan {$i}"]);
 
@@ -91,7 +91,7 @@ class SellingTest extends TestCase
     public function test_validation_rules(): void
     {
         $url = "/api/products/{$this->a->id}/selling";
-        $this->actAs(UserRole::Cs);
+        $this->actAs(UserRole::Staff);
 
         $this->postJson($url, $this->payload(['type' => 'lain']))->assertStatus(422)->assertJsonValidationErrors('type');
         $this->postJson($url, $this->payload(['target_id' => $this->a->id]))->assertStatus(422)->assertJsonValidationErrors('target_id');
@@ -104,7 +104,7 @@ class SellingTest extends TestCase
     public function test_same_target_twice_for_the_same_type_is_rejected_but_other_type_is_allowed(): void
     {
         $url = "/api/products/{$this->a->id}/selling";
-        $this->actAs(UserRole::Cs);
+        $this->actAs(UserRole::Staff);
 
         $this->postJson($url, $this->payload())->assertCreated();
         $this->postJson($url, $this->payload())->assertStatus(422)->assertJsonValidationErrors('target_id');
@@ -116,7 +116,7 @@ class SellingTest extends TestCase
         $first = $this->a->sellingSuggestions()->create($this->payload());
         $this->a->sellingSuggestions()->create($this->payload(['target_id' => $this->c->id]));
 
-        $this->actAs(UserRole::Ts)
+        $this->actAs(UserRole::Staff)
             ->putJson("/api/selling/{$first->id}", $this->payload(['pitch' => 'Pesan baru.']))
             ->assertOk()
             ->assertJsonPath('data.pitch', 'Pesan baru.')
@@ -139,7 +139,7 @@ class SellingTest extends TestCase
         $this->actAs(UserRole::Intern)->putJson("/api/selling/{$entry->id}", $this->payload())->assertForbidden();
         $this->deleteJson("/api/selling/{$entry->id}")->assertForbidden();
 
-        $this->actAs(UserRole::Mo)->deleteJson("/api/selling/{$entry->id}")->assertNoContent();
+        $this->actAs(UserRole::Staff)->deleteJson("/api/selling/{$entry->id}")->assertNoContent();
         $this->assertDatabaseCount('selling_suggestions', 0);
         $this->putJson("/api/selling/{$entry->id}", $this->payload())->assertNotFound();
     }
@@ -156,7 +156,7 @@ class SellingTest extends TestCase
 
     public function test_me_exposes_the_write_selling_permission(): void
     {
-        $this->actAs(UserRole::Cs)->getJson('/api/me')->assertJsonPath('data.permissions.write_selling', true);
+        $this->actAs(UserRole::Staff)->getJson('/api/me')->assertJsonPath('data.permissions.write_selling', true);
         $this->actAs(UserRole::Intern)->getJson('/api/me')->assertJsonPath('data.permissions.write_selling', false);
     }
 

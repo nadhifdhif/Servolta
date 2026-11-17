@@ -3,9 +3,11 @@
 namespace Tests\Feature;
 
 use App\Enums\UserRole;
+use App\Models\Faq;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class FaqTest extends TestCase
@@ -27,7 +29,7 @@ class FaqTest extends TestCase
 
     private function payload(array $override = []): array
     {
-        return array_merge(['category' => 'cs', 'question' => 'Berapa garansinya?', 'answer' => '1 tahun.'], $override);
+        return array_merge(['question' => 'Berapa garansinya?', 'answer' => '1 tahun.'], $override);
     }
 
     public function test_guest_is_rejected(): void
@@ -45,7 +47,7 @@ class FaqTest extends TestCase
         $this->actAs(UserRole::Intern)->getJson("/api/products/{$this->product->id}/faqs")
             ->assertOk()
             ->assertJsonCount(1, 'data')
-            ->assertJsonStructure(['data' => [['id', 'product_id', 'category', 'question', 'answer', 'updated_at']]])
+            ->assertJsonStructure(['data' => [['id', 'product_id', 'question', 'answer', 'updated_at']]])
             ->assertJsonPath('data.0.question', 'Berapa garansinya?');
     }
 
@@ -56,21 +58,32 @@ class FaqTest extends TestCase
             ->assertForbidden()
             ->assertJsonPath('message', 'Role Anda tidak boleh mengubah FAQ.');
 
-        foreach ([UserRole::Cs, UserRole::Ts, UserRole::Mo, UserRole::Sales, UserRole::Konten, UserRole::Spv, UserRole::Admin] as $role) {
+        foreach ([UserRole::Staff, UserRole::Spv, UserRole::Admin] as $role) {
             $this->actAs($role)
                 ->postJson("/api/products/{$this->product->id}/faqs", $this->payload())
                 ->assertCreated()
                 ->assertJsonPath('data.product_id', $this->product->id);
         }
-        $this->assertDatabaseCount('faqs', 7);
+        $this->assertDatabaseCount('faqs', 3);
     }
 
     public function test_validation_errors_use_the_expected_shape(): void
     {
-        $this->actAs(UserRole::Cs)
-            ->postJson("/api/products/{$this->product->id}/faqs", ['category' => 'xx', 'question' => '', 'answer' => ''])
+        $this->actAs(UserRole::Staff)
+            ->postJson("/api/products/{$this->product->id}/faqs", ['question' => '', 'answer' => ''])
             ->assertStatus(422)
-            ->assertJsonValidationErrors(['category', 'question', 'answer']);
+            ->assertJsonValidationErrors(['question', 'answer']);
+    }
+
+    public function test_faqs_have_no_category_anymore(): void
+    {
+        $response = $this->actAs(UserRole::Staff)
+            ->postJson("/api/products/{$this->product->id}/faqs", $this->payload(['category' => 'ts']))
+            ->assertCreated()
+            ->assertJsonMissingPath('data.category');
+
+        $this->assertFalse(Schema::hasColumn('faqs', 'category'));
+        $this->assertArrayNotHasKey('category', Faq::query()->findOrFail($response->json('data.id'))->getAttributes());
     }
 
     public function test_update_and_delete(): void
@@ -80,9 +93,8 @@ class FaqTest extends TestCase
         $this->actAs(UserRole::Intern)->putJson("/api/faqs/{$faq->id}", $this->payload())->assertForbidden();
         $this->deleteJson("/api/faqs/{$faq->id}")->assertForbidden();
 
-        $this->actAs(UserRole::Ts)->putJson("/api/faqs/{$faq->id}", $this->payload(['category' => 'ts', 'answer' => 'Dua tahun.']))
+        $this->actAs(UserRole::Staff)->putJson("/api/faqs/{$faq->id}", $this->payload(['answer' => 'Dua tahun.']))
             ->assertOk()
-            ->assertJsonPath('data.category', 'ts')
             ->assertJsonPath('data.answer', 'Dua tahun.');
 
         $this->deleteJson("/api/faqs/{$faq->id}")->assertNoContent();

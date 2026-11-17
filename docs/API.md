@@ -24,7 +24,7 @@ Kesalahan validasi: `422 { "message": "...", "errors": { "kolom": ["pesan"] } }`
 | DELETE | `/api/products/{id}` | Hapus produk beserta FAQ dan file-nya | `write_products` |
 | PUT | `/api/products/{id}/specs` | Ganti spesifikasi: `{specs: [{label, value}]}` | `write_products` |
 | GET | `/api/products/{id}/faqs` | FAQ produk | Login |
-| POST | `/api/products/{id}/faqs` | Tambah FAQ (`category` cs/ts, `question`, `answer`) | `write_faq` |
+| POST | `/api/products/{id}/faqs` | Tambah FAQ (`question`, `answer`) | `write_faq` |
 | PUT | `/api/faqs/{id}` | Ubah FAQ | `write_faq` |
 | DELETE | `/api/faqs/{id}` | Hapus FAQ (204) | `write_faq` |
 | GET | `/api/products/{id}/selling` | Saran upselling & cross selling produk, lengkap dengan `target {id, sku, name}` | Login |
@@ -40,11 +40,12 @@ Kesalahan validasi: `422 { "message": "...", "errors": { "kolom": ["pesan"] } }`
 | POST | `/api/products/{id}/datasheet-documents` | Unggah PDF (multipart: `title`, `rev`, `kind`, `file`) | `write_products` |
 | DELETE | `/api/datasheet-documents/{id}` | Hapus dokumen (204) | `write_products` |
 
-Hak akses (delapan role: admin, spv, ts, mo, cs, sales, konten, intern):
+Hak akses (empat role: admin, spv, staff, intern):
 - `write_faq`, `write_selling`, `write_products` (SKU, spesifikasi, wiring, datasheet): semua role kecuali intern. Intern hanya melihat.
 - `view_logs`: hanya admin.
-- `manage_users`: admin (semua role) dan spv (hanya ts, mo, cs, sales, konten, intern).
-- Label tampilan: `sales` = Sales and Data, `konten` = Content and Branding.
+- `manage_users`: admin (semua role) dan spv (hanya staff dan intern).
+- Label tampilan: `admin` = Admin, `spv` = Supervisor, `staff` = Staff, `intern` = Intern.
+- FAQ tidak lagi punya kategori; satu FAQ adalah pasangan `question` dan `answer` milik satu produk.
 
 Aturan saran: produk tujuan harus ada dan tidak boleh sama dengan produk asal; satu tujuan hanya sekali per jenis untuk produk yang sama.
 

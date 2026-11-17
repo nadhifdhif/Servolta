@@ -6,11 +6,7 @@ enum UserRole: string
 {
     case Admin = 'admin';
     case Spv = 'spv';
-    case Ts = 'ts';
-    case Mo = 'mo';
-    case Cs = 'cs';
-    case Sales = 'sales';
-    case Konten = 'konten';
+    case Staff = 'staff';
     case Intern = 'intern';
 
     public function label(): string
@@ -18,11 +14,7 @@ enum UserRole: string
         return match ($this) {
             self::Admin => 'Admin',
             self::Spv => 'Supervisor',
-            self::Ts => 'Technical Support',
-            self::Mo => 'Marketing Officer',
-            self::Cs => 'Customer Service',
-            self::Sales => 'Sales and Data',
-            self::Konten => 'Content and Branding',
+            self::Staff => 'Staff',
             self::Intern => 'Intern',
         };
     }
@@ -37,7 +29,7 @@ enum UserRole: string
     {
         return match ($this) {
             self::Admin => self::cases(),
-            self::Spv => [self::Ts, self::Mo, self::Cs, self::Sales, self::Konten, self::Intern],
+            self::Spv => [self::Staff, self::Intern],
             default => [],
         };
     }
