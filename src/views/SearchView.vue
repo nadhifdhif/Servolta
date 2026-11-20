@@ -46,6 +46,7 @@ const SECTIONS = [
 const canWrite = computed(() => auth.permissions.write_faq === true)
 const canSell = computed(() => auth.permissions.write_selling === true)
 const sellingCounts = computed(() => countByType(selling.value))
+const faqCount = computed(() => faqs.value.length)
 
 const visibleFaqs = computed(() => {
   const q = normalize(faqQuery.value)
@@ -188,7 +189,7 @@ async function removeFaq(faq) {
         <div class="product-info">
           <span class="sku-chip">{{ selected.sku }}</span>
           <h2>{{ selected.name }}</h2>
-          <p class="muted small">{{ counts.all }} FAQ tersedia</p>
+          <p class="muted small">{{ faqCount }} FAQ tersedia</p>
         </div>
         <button
           v-if="section === 'faq' && canWrite && formMode === null"
@@ -211,7 +212,7 @@ async function removeFaq(faq) {
           @click="section = tab.key"
         >
           {{ tab.label }}
-          <span class="count">{{ tab.key === 'faq' ? counts.all : sellingCounts[tab.key] }}</span>
+          <span class="count">{{ tab.key === 'faq' ? faqCount : sellingCounts[tab.key] }}</span>
         </button>
       </div>
 
